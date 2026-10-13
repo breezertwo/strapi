@@ -3,7 +3,7 @@ import { async } from '@strapi/utils';
 import { isEmpty } from 'lodash';
 
 import type { Core, UID, Modules } from '@strapi/types';
-import type { PermissionCheckerAction, PermissionCheckerService } from '../types/services';
+import type { PermissionCheckerAction } from '../types/services';
 
 export const ACTIONS = {
   read: 'plugin::content-manager.explorer.read',
@@ -31,10 +31,11 @@ type Query = {
 const createPermissionChecker =
   (strapi: Core.Strapi) =>
   ({ userAbility, model }: { userAbility: Ability; model: string }) => {
-    const permissionsManager = strapi.service('admin::permission').createPermissionsManager({
-      ability: userAbility,
-      model,
-    });
+    // `any`, as the untyped lookup was on develop: the sanitizers and validators below publish its
+    // results as `any`. The registered contract types them.
+    const permissionsManager: any = strapi
+      .service('admin::permission')
+      .createPermissionsManager({ ability: userAbility, model });
 
     const { actionProvider } = strapi.service('admin::permission');
 
@@ -198,7 +199,8 @@ const createPermissionChecker =
     };
   };
 
-export default ({ strapi }: { strapi: Core.Strapi }): PermissionCheckerService => ({
-  // The action shortcuts are attached at runtime, which the inferred type does not see.
-  create: createPermissionChecker(strapi) as PermissionCheckerService['create'],
+// The published type stays the inferred one, as on develop. The registered contract
+// (`PermissionCheckerService`) also describes the action shortcuts attached at runtime.
+export default ({ strapi }: { strapi: Core.Strapi }) => ({
+  create: createPermissionChecker(strapi),
 });
