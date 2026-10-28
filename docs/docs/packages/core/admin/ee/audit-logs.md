@@ -38,6 +38,10 @@ The `admin::audit-logs.read` / `admin::audit-logs.export` permission actions fol
 
 When the license loses the `audit-logs` feature, the two actions are not registered on the next boot. The Super Admin reset (`resetSuperAdminPermissions`) drops them from the Super Admin, and the permission cleanup (`cleanPermissionsInDatabase`) deletes them from every other role and from admin tokens. When the feature comes back, the Super Admin reset restores them for the Super Admin only.
 
+### Strict types
+
+With strict types, the controller is registered as `Core.Licensed<'audit-logs', Contract>`: an application that lists `audit-logs` in `licensedFeatures` gets the contract. The types do not model `admin.auditLogs.enabled`. The two action IDs are declared in `PermissionActions`. Read [License-gated contracts](../../../../contributing/05-typescript.md#license-gated-contracts).
+
 ### Subscribing to all events
 
 The Audit Logs feature adds a subscriber to the [EventHub](../../core/event-hub.md), allowing it to listen to all events in the application. However, we don't save every event in the audit logs; we only save the default ones (see the defaultEvents array in the service file).
