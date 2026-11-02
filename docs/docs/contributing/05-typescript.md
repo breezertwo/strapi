@@ -459,6 +459,11 @@ types what the runtime returns, not what the schema asks for:
   types.
 - `datetime`, `date`, `time` and `timestamp` results are strings. Inputs still accept `Date`.
 - Populated to-many attributes are arrays, never `null`. Unpopulated attributes are absent.
+- A populated media is the `plugin::upload.file` document, as a populated relation is its target's
+  document: `Schema.Attribute.MediaValue` reads the file schema with strict types, and stays `any`
+  (`any[]` for multiple media) without them. A media attribute whose plurality is unknown stays
+  `any`. The `image` of a blocks image node is not a media value: it holds a copy of some file
+  fields, taken when the image was inserted, and stays `any`.
 
 The JSDoc on each type gives the runtime reason. Without strict types, results keep develop's
 `Result` type.
@@ -487,7 +492,7 @@ type generation already emits, `Schema.Attribute.Required` and `Schema.Attribute
   `{ connect: [] }`, `{ disconnect: [] }`) unlinks every file;
   [#27116](https://github.com/strapi/strapi/pull/27116) fixes both. Code that reads a multiple media
   input narrows it with `Array.isArray` first. Without strict types, media inputs stay `any` and
-  `any[]`.
+  `any[]`. The deprecated Entity Service keeps these loose media inputs in both modes.
 - An attribute with a `conditions.visible` rule is optional and nullable: a hidden field skips
   validation. Type generation marks it with `Schema.Attribute.Conditional`, with strict types only.
 - `update` and `clone` require no key. On update, a component value with `id` is partial; a value

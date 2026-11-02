@@ -1,7 +1,7 @@
 // Media values and inputs with strict types. Its own program, with the contracts of the bundled
 // packages (`strapi-strict.d.ts`): `plugin::upload.file` is the upload plugin's schema. Without strict
 // types, `media-permissive.ts` checks develop's loose types.
-import type { Core, Modules, Schema, Struct } from '@strapi/strapi';
+import type { Core, Data, Modules, Schema, Struct } from '@strapi/strapi';
 
 interface ArticleSchema extends Struct.CollectionTypeSchema {
   collectionName: 'media_articles';
@@ -88,3 +88,42 @@ declare const input: ArticleInput;
 export const galleryCount = Array.isArray(input.gallery) ? input.gallery.length : 0;
 // @ts-expect-error The input may be a `connect`, `disconnect` or `set` object.
 export const galleryLength: number = input.gallery.length;
+
+// The deprecated Entity Service keeps develop's loose media input.
+void app.entityService.update('api::article.article', 1, {
+  data: { cover: [12], gallery: [12, { id: 13 }] },
+});
+
+type Equal<T, U> =
+  (<V>() => V extends T ? 1 : 2) extends <V>() => V extends U ? 1 : 2 ? true : false;
+type Expect<T extends true> = T;
+type IsAny<T> = 0 extends 1 & T ? true : false;
+
+// Populated media are upload file documents, as a populated relation is its target's document. An
+// empty single media is `null`, an empty multiple media `[]`.
+type File = Data.ContentType<'plugin::upload.file'>;
+const populated = articles.findOne({ documentId: 'a', populate: ['cover', 'gallery', 'seo'] });
+type Populated = NonNullable<Awaited<typeof populated>>;
+type ImageBlockNode = Extract<NonNullable<Populated['body']>[number], { type: 'image' }>;
+
+declare const outputChecks: [
+  Expect<Equal<Populated['cover'], File | null>>,
+  Expect<Equal<Populated['gallery'], File[]>>,
+  Expect<Equal<NonNullable<Populated['seo']>['image'], File | null | undefined>>,
+  Expect<Equal<Data.ContentType<'api::article.article'>['hero'], File | null | undefined>>,
+  // An image node holds a copy of some file fields, taken when the image was inserted.
+  Expect<IsAny<ImageBlockNode['image']>>,
+];
+outputChecks satisfies unknown;
+
+export async function readCover() {
+  const article = await populated;
+
+  if (article === null || article.cover === null) return undefined;
+
+  const url: string | null | undefined = article.cover.url;
+  // @ts-expect-error `formats` is a JSON attribute: its keys are not known.
+  const thumbnail = article.cover.formats.thumbnail;
+
+  return { url, thumbnail };
+}

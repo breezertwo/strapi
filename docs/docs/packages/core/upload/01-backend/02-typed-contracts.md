@@ -31,7 +31,7 @@ The `upload` service contract, `UploadService`, is the inferred implementation w
 
 ## Content-type schemas
 
-`types/content-types.ts` declares the schemas of `plugin::upload.file` (`FileSchema`) and `plugin::upload.folder` (`FolderSchema`) in `PackageContentTypeSchemas`, as type generation writes them for an application that does not extend them. Plugin code compiled without type generation then reads these two content types precisely through the Document Service; in an application, the generated schemas replace them. Keep the declarations in sync with `content-types/file.ts` and `content-types/folder.ts`: the drift check of `examples/strict-types` fails when they differ.
+`types/content-types.ts` declares the schemas of `plugin::upload.file` (`FileSchema`) and `plugin::upload.folder` (`FolderSchema`) in `PackageContentTypeSchemas`, as type generation writes them for an application that does not extend them. Plugin code compiled without type generation then reads these two content types precisely through the Document Service; in an application, the generated schemas replace them. With strict types, a populated media attribute of any content type is a `plugin::upload.file` document, read from the same schema. Keep the declarations in sync with `content-types/file.ts` and `content-types/folder.ts`: the drift check of `examples/strict-types` fails when they differ.
 
 ## Config, stores and events
 

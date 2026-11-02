@@ -1,10 +1,33 @@
 // Media types with strict types (this program loads `@strapi/types/strict`). Without strict types,
 // `tests/strict-off.ts` pins develop's loose types.
+import type * as Data from '../../../data';
 import type * as Documents from '../../../modules/documents';
+import type * as EntityService from '../../../modules/entity-service';
 import type * as Attribute from '..';
 
 type IsAny<T> = 0 extends 1 & T ? true : false;
 type Assert<T extends true> = T;
+type Equal<T, U> =
+  (<V>() => V extends T ? 1 : 2) extends <V>() => V extends U ? 1 : 2 ? true : false;
+
+// Values are upload file documents, as a relation's value is its target's document. A generic
+// media attribute, whose plurality is unknown, stays `any`.
+type File = Attribute.MediaValue;
+
+declare const valueChecks: [
+  Assert<Equal<IsAny<File>, false>>,
+  Assert<Equal<File['id'], Data.ID>>,
+  Assert<Equal<File['documentId'], Data.DocumentID>>,
+  Assert<Equal<Attribute.MediaValue<true>, File[]>>,
+  Assert<Equal<Attribute.Value<Attribute.Media<'images'>>, File>>,
+  Assert<Equal<Attribute.Value<Attribute.Media<'images', true>>, File[]>>,
+  Assert<IsAny<Attribute.MediaValue<boolean>>>,
+  Assert<IsAny<Attribute.Value<Attribute.Media<Attribute.MediaKind | undefined, boolean>>>>,
+];
+valueChecks satisfies unknown;
+
+// @ts-expect-error A file document has an `id` and a `documentId`.
+({ url: '/a.png' }) satisfies File;
 
 // Blocks image nodes hold a copy of some file fields, taken when the image was inserted: not a
 // populated media value.
@@ -21,7 +44,12 @@ type GenericMediaInput = Documents.Params.Attribute.GetValue<
   Attribute.Media<Attribute.MediaKind | undefined, boolean>
 >;
 
-declare const inputChecks: [Assert<IsAny<GenericMediaInput>>];
+declare const inputChecks: [
+  Assert<IsAny<GenericMediaInput>>,
+  // The deprecated Entity Service keeps develop's loose input.
+  Assert<IsAny<EntityService.Params.Attribute.GetValue<Attribute.Media<'images'>>>>,
+  Assert<Equal<EntityService.Params.Attribute.GetValue<Attribute.Media<'images', true>>, any[]>>,
+];
 inputChecks satisfies unknown;
 
 12 satisfies SingleMediaInput;

@@ -1141,7 +1141,7 @@ for (const [resolution, resolutionOptions] of Object.entries(resolutions)) {
     );
   });
 
-  test(`${resolution}: media inputs take the relation formats only in strict mode`, () => {
+  test(`${resolution}: media values and inputs follow the upload file only in strict mode`, () => {
     assertClean(compile(['strapi-strict.d.ts', 'media.ts']), `${resolution}, media in strict mode`);
     assertClean(compile(['media-permissive.ts']), `${resolution}, media without strict types`);
   });
