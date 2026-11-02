@@ -307,9 +307,9 @@ declare global {
   The strict-off build checks the same code against the implementation, whose `registerMany`
   takes a mutable array, so admin's bootstrap casts the lookup result to
   `Core.ServiceFor<'admin::permission'>` before it passes its `as const` list.
-- Register actions in a plugin's `register` or `bootstrap`, or in an application's `register`, not
-  in an application's `bootstrap`. Admin's bootstrap runs after the plugins' and before the
-  application's, and removes the stored permissions of every unregistered action. The second
+- Register actions in the `register` or `bootstrap` of a plugin or an application. Once every
+  `bootstrap` has run, admin removes the stored permissions of every unregistered action, in its
+  `strapi::app.afterBootstrap` handler; registering an action after that throws. The second
   registration of an ID throws at boot, and the second registrant may be the owner.
 - Without strict types, `Core.PermissionActionReference` is any string, with the declared IDs
   listed for completion, and the action provider keeps develop's signatures.

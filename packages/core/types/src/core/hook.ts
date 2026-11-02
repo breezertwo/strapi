@@ -31,6 +31,14 @@ export interface AsyncParallelHook<TContext> extends HookHandlers<TContext> {
 }
 
 /**
+ * A hook created by `hooks.createAsyncSeriesHook()` from `@strapi/utils`, whose caller passes
+ * `TContext`. `call` runs the handlers one after the other, awaiting each, with the same context.
+ */
+export interface AsyncSeriesHook<TContext> extends HookHandlers<TContext> {
+  call(context: TContext): Promise<void>;
+}
+
+/**
  * The context of the `strapi::content-types.beforeSync` and `afterSync` hooks, which `@strapi/core`
  * calls around the database schema sync at bootstrap.
  */
@@ -51,12 +59,17 @@ declare global {
     namespace Registries {
       /**
        * Hooks of the Strapi instance itself. `@strapi/core` sets them before plugins register and
-       * calls them around the database schema sync at bootstrap. They are registered here, next to the
+       * calls them around the database schema sync and at the end of bootstrap. They are registered here, next to the
        * `Strapi` interface, so that packages depending only on `@strapi/types` see them.
        */
       interface Hooks {
         'strapi::content-types.beforeSync': AsyncParallelHook<ContentTypesSyncContext>;
         'strapi::content-types.afterSync': AsyncParallelHook<ContentTypesSyncContext>;
+        /**
+         * Called once every module, provider and the application have bootstrapped, without a
+         * context. Admin cleans the stored permissions of unregistered actions in its handler.
+         */
+        'strapi::app.afterBootstrap': AsyncSeriesHook<void>;
       }
     }
   }

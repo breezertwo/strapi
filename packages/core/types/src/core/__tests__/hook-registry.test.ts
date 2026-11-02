@@ -1,6 +1,11 @@
 import { hooks } from '@strapi/utils';
 
-import type { AsyncParallelHook, ContentTypesSyncContext, HookHandlers } from '../hook';
+import type {
+  AsyncParallelHook,
+  AsyncSeriesHook,
+  ContentTypesSyncContext,
+  HookHandlers,
+} from '../hook';
 import type { Strapi as StrapiInstance } from '../strapi';
 
 type LabContext = { label: string };
@@ -26,6 +31,7 @@ declare const dynamicName: string;
 
 // Registered hooks resolve to their contracts, including the hooks of the Strapi instance.
 const beforeSync = strapi.hook('strapi::content-types.beforeSync');
+const afterBootstrap = strapi.hook('strapi::app.afterBootstrap');
 const created = strapi.hook('plugin::hook-lab.created');
 // Unregistered names resolve to `unknown`: the runtime returns `undefined` when no hook is set.
 const unregistered = strapi.hook('plugin::hook-lab.unregistered');
@@ -33,6 +39,7 @@ const dynamic = strapi.hook(dynamicName);
 const registry = strapi.get('hooks');
 declare const lookups: [
   Expect<Equal<typeof beforeSync, AsyncParallelHook<ContentTypesSyncContext>>>,
+  Expect<Equal<typeof afterBootstrap, AsyncSeriesHook<void>>>,
   Expect<Equal<typeof created, AsyncParallelHook<LabContext>>>,
   Expect<Equal<typeof unregistered, unknown>>,
   Expect<Equal<typeof dynamic, unknown>>,
