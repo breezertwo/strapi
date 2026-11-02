@@ -1140,6 +1140,10 @@ for (const [resolution, resolutionOptions] of Object.entries(resolutions)) {
     );
   });
 
+  test(`${resolution}: media values and inputs keep develop's types without strict types`, () => {
+    assertClean(compile(['media-permissive.ts']), `${resolution}, media without strict types`);
+  });
+
   test(`${resolution}: package schemas are precise without generated schemas, other UIDs stay generic`, () => {
     assertClean(
       compile(['settings.d.ts', 'package-schemas.d.ts', 'package-schemas-open.ts']),
