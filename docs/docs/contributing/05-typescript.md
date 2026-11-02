@@ -477,6 +477,17 @@ type generation already emits, `Schema.Attribute.Required` and `Schema.Attribute
   and dynamic zones never accept it.
 - Required relations and media stay optional: the runtime enforces them only with
   `api.documents.strictRelations`.
+- Media take the relation input formats (`MediaInputValue` in
+  `packages/core/types/src/modules/documents/params/attributes/relations.ts`). A single media takes
+  one file (an ID, `{ id }` or `{ documentId }`) or `null`. A multiple media takes an array of IDs or
+  an array of objects, `null`, `connect` and `disconnect`, or `set`. `connect` takes no `position`:
+  the runtime always appends the file. Two inputs compile but differ from relations at runtime:
+  `connect` on create attaches no file to a multiple media
+  ([#27989](https://github.com/strapi/strapi/issues/27989)), and an empty update (`{}`,
+  `{ connect: [] }`, `{ disconnect: [] }`) unlinks every file;
+  [#27116](https://github.com/strapi/strapi/pull/27116) fixes both. Code that reads a multiple media
+  input narrows it with `Array.isArray` first. Without strict types, media inputs stay `any` and
+  `any[]`.
 - An attribute with a `conditions.visible` rule is optional and nullable: a hidden field skips
   validation. Type generation marks it with `Schema.Attribute.Conditional`, with strict types only.
 - `update` and `clone` require no key. On update, a component value with `id` is partial; a value

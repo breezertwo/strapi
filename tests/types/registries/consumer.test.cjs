@@ -1077,6 +1077,7 @@ for (const [resolution, resolutionOptions] of Object.entries(resolutions)) {
       ['strapi-strict.d.ts', 'action-provider.ts'],
       ['settings.d.ts', 'schemas.ts'],
       ['settings.d.ts', 'document-write.ts'],
+      ['strapi-strict.d.ts', 'media.ts'],
       ['settings.d.ts', 'package-schemas.d.ts', 'package-schemas-open.ts'],
       [
         'settings.d.ts',
@@ -1140,7 +1141,8 @@ for (const [resolution, resolutionOptions] of Object.entries(resolutions)) {
     );
   });
 
-  test(`${resolution}: media values and inputs keep develop's types without strict types`, () => {
+  test(`${resolution}: media inputs take the relation formats only in strict mode`, () => {
+    assertClean(compile(['strapi-strict.d.ts', 'media.ts']), `${resolution}, media in strict mode`);
     assertClean(compile(['media-permissive.ts']), `${resolution}, media without strict types`);
   });
 
