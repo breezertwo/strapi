@@ -170,6 +170,40 @@ export interface RoleSchema extends Struct.CollectionTypeSchema {
   >;
 }
 
+/**
+ * The schema of `admin::audit-log` once loaded (`../../../ee/server/src/audit-logs/content-types/audit-log.ts`).
+ * The CE admin registers it in every edition, with or without a license.
+ */
+export interface AuditLogSchema extends Struct.CollectionTypeSchema {
+  collectionName: 'strapi_audit_logs';
+  info: {
+    singularName: 'audit-log';
+    pluralName: 'audit-logs';
+    displayName: 'Audit Log';
+  };
+  options: {
+    draftAndPublish: false;
+    timestamps: false;
+  };
+  pluginOptions: {
+    'content-manager': {
+      visible: false;
+    };
+    'content-type-builder': {
+      visible: false;
+    };
+  };
+  attributes: Struct.WithSystemAttributes<
+    'admin::audit-log',
+    {
+      action: Schema.Attribute.String & Schema.Attribute.Required;
+      date: Schema.Attribute.DateTime & Schema.Attribute.Required;
+      user: Schema.Attribute.Relation<'oneToOne', 'admin::user'>;
+      payload: Schema.Attribute.JSON;
+    }
+  >;
+}
+
 /** The schema of `admin::session` once loaded (`../content-types/session.ts`). */
 export interface SessionSchema extends Struct.CollectionTypeSchema {
   collectionName: 'strapi_sessions';
@@ -351,6 +385,7 @@ declare global {
       interface PackageContentTypeSchemas {
         'admin::api-token': ApiTokenSchema;
         'admin::api-token-permission': ApiTokenPermissionSchema;
+        'admin::audit-log': AuditLogSchema;
         'admin::permission': PermissionSchema;
         'admin::role': RoleSchema;
         'admin::session': SessionSchema;

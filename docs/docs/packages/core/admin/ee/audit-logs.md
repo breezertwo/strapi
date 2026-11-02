@@ -40,7 +40,7 @@ When the license loses the `audit-logs` feature, the two actions are not registe
 
 ### Strict types
 
-With strict types, the controller is registered as `Core.Licensed<'audit-logs', Contract>`: an application that lists `audit-logs` in `licensedFeatures` gets the contract. The types do not model `admin.auditLogs.enabled`. The two action IDs are declared in `PermissionActions`. Read [License-gated contracts](../../../../contributing/05-typescript.md#license-gated-contracts).
+With strict types, the controller is registered as `Core.Licensed<'audit-logs', Contract>`: an application that lists `audit-logs` in `licensedFeatures` gets the contract. The types do not model `admin.auditLogs.enabled`. The two action IDs are declared in `PermissionActions`. The admin declares the `admin::audit-log` schema in `PackageContentTypeSchemas`, because every edition registers it. Read [License-gated contracts](../../../../contributing/05-typescript.md#license-gated-contracts).
 
 ### Subscribing to all events
 

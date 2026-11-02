@@ -1,6 +1,6 @@
 // Compile-only assertions. The server tsconfig includes this file; declaration builds exclude it.
 import type { Schema } from '@strapi/types';
-import type { RoleSchema, UserSchema } from './content-types';
+import type { AuditLogSchema, RoleSchema, UserSchema } from './content-types';
 
 type Equal<T, U> =
   (<V>() => V extends T ? 1 : 2) extends <V>() => V extends U ? 1 : 2 ? true : false;
@@ -9,6 +9,7 @@ type Expect<T extends true> = T;
 declare const checks: [
   Expect<Equal<Schema.ContentType<'admin::user'>, UserSchema>>,
   Expect<Equal<Schema.ContentType<'admin::role'>, RoleSchema>>,
+  Expect<Equal<Schema.ContentType<'admin::audit-log'>, AuditLogSchema>>,
 ];
 checks satisfies unknown;
 
@@ -27,5 +28,6 @@ strapi.documents('admin::role').findMany({ filters: { missing: { $eq: 'x' } } })
 // @ts-expect-error Writes are checked against the declared schema.
 strapi.documents('admin::api-token').update({ documentId: 'x', data: { missing: 'x' } });
 strapi.getModel('admin::session').attributes.sessionId satisfies Schema.Attribute.String;
+strapi.getModel('admin::audit-log').attributes.payload satisfies Schema.Attribute.JSON;
 // Content types no package declares stay generic.
 strapi.documents('api::article.article').findMany({ filters: { anything: { $eq: 1 } } });

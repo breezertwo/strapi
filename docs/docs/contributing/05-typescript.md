@@ -544,8 +544,8 @@ export default {
   with: for service and controller contracts, and for the attributes a package adds to content
   types under a license (`strapi_stage` and `strapi_assignee` of review workflows, read
   [Content-type schemas](#content-type-schemas)). Generated files are then the same on every
-  machine. One exception remains: admin registers the `admin::audit-log` content type only when a
-  license verifies, so type generation writes it only under a license.
+  machine. Admin registers the `admin::audit-log` content type in every edition, so type generation
+  writes it with or without a license.
 - Without strict types, nothing changes: `licensedFeatures` is ignored, lookups keep
   `Core.Service` and `Core.Controller`, and generated schemas follow the license type generation
   boots with, as in previous releases.
