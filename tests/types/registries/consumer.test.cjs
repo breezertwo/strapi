@@ -966,7 +966,10 @@ for (const [resolution, resolutionOptions] of Object.entries(resolutions)) {
       }
     });
 
-    test(`${resolution}: switch ${mode}, registered names remain available in completions`, () => {
+    const completionTest = strict
+      ? 'registered names remain available in completions'
+      : 'root lookups list no registered names in completions';
+    test(`${resolution}: switch ${mode}, ${completionTest}`, () => {
       const filename = fixture('completions.ts');
       const source = fs.readFileSync(filename, 'utf8');
       const service = ts.createLanguageService({
@@ -989,7 +992,9 @@ for (const [resolution, resolutionOptions] of Object.entries(resolutions)) {
         getDefaultLibFileName: (settings) => ts.getDefaultLibFilePath(settings),
       });
       try {
-        const locations = [
+        // Root lookups list registered names only with the switch on. Without it, they take
+        // develop's parameters (`UID.Service`, `UID.Controller`, `string`), so editors list none.
+        const rootLookups = [
           ["app.plugin('", ['i18n', 'sentry', 'content-manager']],
           ["app.api('", ['article']],
           [
@@ -1001,46 +1006,43 @@ for (const [resolution, resolutionOptions] of Object.entries(resolutions)) {
             "app.policy('",
             ['admin::isAuthenticatedAdmin', 'plugin::content-manager.hasPermissions'],
           ],
-          ["handler: '", ['locales.listLocales', 'plugin::i18n.locales.listLocales']],
-          ["policies: ['", ['admin::isAuthenticatedAdmin']],
           ["app.middleware('", ['admin::rateLimit', 'admin::data-transfer']],
-          ["middlewares: ['", ['admin::rateLimit']],
-          // With the switch on, editors list no name inside `{ name: '' }`: the inline handler
-          // member has `Function.name: string`, which matches any string being typed, so the object
-          // literal is typed as the handler. Bare names are listed.
-          ...(strict ? [] : [["middlewares: [{ name: '", ['admin::rateLimit']]]),
-          [
-            "policies: [{ name: '",
-            ['admin::hasPermissions', 'plugin::content-manager.hasPermissions'],
-          ],
-          // Config paths, the maps, plugin and API member lookups, and policy config contracts are
-          // typed only with the switch on: without it, `config.get(path)`, `plugin(name)` and
-          // `api(name)` keep develop's non-generic signatures, so nothing can depend on the argument.
-          ...(strict
-            ? [
-                ["app.config.get('", ['plugin::sentry']],
-                // Dotted paths list one level at a time, so large contracts stay out of the list.
-                [
-                  "app.config.get('plugin::sentry.",
-                  ['plugin::sentry.dsn', 'plugin::sentry.init'],
-                  ['plugin::sentry.init.dsn'],
-                ],
-                ["app.config.get('plugin::sentry.init.", ['plugin::sentry.init.dsn']],
-                ["app.plugin('sentry').config('", ['dsn', 'sendMetadata', 'init'], ['init.dsn']],
-                ["app.plugin('sentry').config('init.", ['init.dsn', 'init.debug']],
-                ["app.plugin('i18n').service('", ['locales']],
-                ["app.plugin('i18n').controller('", ['locales', 'iso-locales']],
-                ["app.api('article').service('", ['article']],
-                ["app.api('article').controller('", ['article']],
-                ["app.api('article').policy('", ['isOwner']],
-                ["app.plugin('content-manager').policy('", ['hasPermissions']],
-                ["app.services['", ['plugin::i18n.locales', 'admin::auth']],
-                ['app.plugins.', ['i18n', 'sentry']],
-                ["hasPermissions', config: {", ['actions', 'hasAtLeastOne']],
-                ["admin::rateLimit', config: {", ['max', 'interval']],
-              ]
-            : []),
         ];
+        const locations = strict
+          ? [
+              ...rootLookups,
+              ["handler: '", ['locales.listLocales', 'plugin::i18n.locales.listLocales']],
+              ["policies: ['", ['admin::isAuthenticatedAdmin']],
+              ["middlewares: ['", ['admin::rateLimit']],
+              // Editors list no name inside `{ name: '' }` for middlewares: the inline handler
+              // member has `Function.name: string`, which matches any string being typed, so the
+              // object literal is typed as the handler. Bare names are listed.
+              [
+                "policies: [{ name: '",
+                ['admin::hasPermissions', 'plugin::content-manager.hasPermissions'],
+              ],
+              ["app.config.get('", ['plugin::sentry']],
+              // Dotted paths list one level at a time, so large contracts stay out of the list.
+              [
+                "app.config.get('plugin::sentry.",
+                ['plugin::sentry.dsn', 'plugin::sentry.init'],
+                ['plugin::sentry.init.dsn'],
+              ],
+              ["app.config.get('plugin::sentry.init.", ['plugin::sentry.init.dsn']],
+              ["app.plugin('sentry').config('", ['dsn', 'sendMetadata', 'init'], ['init.dsn']],
+              ["app.plugin('sentry').config('init.", ['init.dsn', 'init.debug']],
+              ["app.plugin('i18n').service('", ['locales']],
+              ["app.plugin('i18n').controller('", ['locales', 'iso-locales']],
+              ["app.api('article').service('", ['article']],
+              ["app.api('article').controller('", ['article']],
+              ["app.api('article').policy('", ['isOwner']],
+              ["app.plugin('content-manager').policy('", ['hasPermissions']],
+              ["app.services['", ['plugin::i18n.locales', 'admin::auth']],
+              ['app.plugins.', ['i18n', 'sentry']],
+              ["hasPermissions', config: {", ['actions', 'hasAtLeastOne']],
+              ["admin::rateLimit', config: {", ['max', 'interval']],
+            ]
+          : rootLookups.map(([prefix, names]) => [prefix, [], names]);
         for (const [prefix, expected, unexpected = []] of locations) {
           const offset = source.indexOf(prefix);
           assert.notEqual(offset, -1, `Missing completion location ${prefix}`);
