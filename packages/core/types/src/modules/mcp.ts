@@ -1,5 +1,5 @@
 import type { Ability } from '@casl/ability';
-import type * as z from 'zod/v4';
+import { z } from '@strapi/utils';
 import type * as Core from '../core';
 
 /** A single CASL permission check: action + optional subject. */

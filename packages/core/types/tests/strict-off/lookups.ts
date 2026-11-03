@@ -177,3 +177,22 @@ declare const rolePolicy: Core.Policy<{ role: string }>;
 // @ts-expect-error A policy that needs a config is not assignable to `Policy<unknown>`.
 const anyConfigPolicy: Core.Policy = rolePolicy;
 anyConfigPolicy satisfies unknown;
+
+// Root lookups print develop's parameters exactly, even with registered names in the program:
+// completion lists are strict-only.
+type RootLookupParameter<TKey extends keyof Core.Strapi> = Core.Strapi[TKey] extends (
+  name: infer TName
+) => unknown
+  ? TName
+  : never;
+declare const rootLookupChecks: [
+  Expect<Equal<RootLookupParameter<'service'>, UID.Service>>,
+  Expect<Equal<RootLookupParameter<'controller'>, UID.Controller>>,
+  Expect<Equal<RootLookupParameter<'policy'>, string>>,
+  Expect<Equal<RootLookupParameter<'middleware'>, string>>,
+  Expect<Equal<RootLookupParameter<'plugin'>, string>>,
+  Expect<Equal<RootLookupParameter<'api'>, string>>,
+  Expect<Equal<RootLookupParameter<'hook'>, string>>,
+  Expect<Equal<Core.Strapi['log'], import('@strapi/logger').Logger>>,
+];
+rootLookupChecks satisfies unknown;

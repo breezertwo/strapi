@@ -80,6 +80,19 @@ declare const nameChecks: [
 ];
 nameChecks satisfies unknown;
 
+// Root lookups list registered names only with strict types: without them, they print develop's
+// parameters (`tests/strict-off/lookups.ts`).
+type RootLookupName<TKey extends keyof StrapiInstance> = Parameters<StrapiInstance[TKey]>[0];
+// `Extract` keeps a literal only when the union lists it: a plain `string` or UID pattern drops it.
+type Lists<TName, TMember> = Equal<Extract<TName, TMember>, TMember>;
+declare const rootNameChecks: [
+  Expect<Lists<RootLookupName<'service'>, 'plugin::suggest-lab.greeting'>>,
+  Expect<Lists<RootLookupName<'controller'>, 'plugin::suggest-lab.items'>>,
+  Expect<Lists<RootLookupName<'policy'>, 'plugin::suggest-lab.isOwner'>>,
+  Expect<Lists<RootLookupName<'middleware'>, 'plugin::suggest-lab.timer'>>,
+];
+rootNameChecks satisfies unknown;
+
 declare const strapi: StrapiInstance;
 declare const dynamicName: string;
 
@@ -93,7 +106,7 @@ strapi.config.get('server.port') satisfies unknown;
 strapi.plugin('suggest-lab').config('provider.missing') satisfies unknown;
 strapi.config.get(dynamicName) satisfies unknown;
 
-// Suggested names do not restrict the accepted names, and keep the legacy results.
+// Suggested names do not restrict the accepted names.
 strapi.policy('global::unregistered') satisfies unknown;
 strapi.policy(dynamicName) satisfies unknown;
 strapi.middleware('global::unregistered') satisfies unknown;

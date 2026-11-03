@@ -1,4 +1,4 @@
-import type { Logger } from 'winston';
+import type { Logger } from '@strapi/logger';
 import type { Database } from '@strapi/database';
 
 import type { PropertyPath } from 'lodash';
@@ -9,42 +9,29 @@ import type * as Schema from '../schema';
 import type * as UID from '../uid';
 
 import type { Container } from './container';
-import type {
-  ControllerLookup,
-  ControllerLookupName,
-  ControllerMap,
-  RegisteredControllerUID,
-} from './controller';
-import type {
-  MiddlewareLookup,
-  MiddlewareLookupName,
-  MiddlewareMap,
-  RegisteredMiddlewareName,
-} from './middleware';
+import type { ControllerLookup, ControllerLookupName, ControllerMap } from './controller';
+import type { MiddlewareLookup, MiddlewareLookupName, MiddlewareMap } from './middleware';
 import type { HookFor, HookLookupName, HookMap, StrictHooksRegistry } from './hook';
 import type { ApiMap, RegisteredApiName } from './module';
 import type { PluginMap, RegisteredPluginName } from './plugin';
-import type { PolicyLookup, PolicyLookupName, PolicyMap, RegisteredPolicyName } from './policy';
-import type { RegisteredServiceUID, ServiceLookup, ServiceLookupName, ServiceMap } from './service';
+import type { PolicyLookup, PolicyLookupName, PolicyMap } from './policy';
+import type { ServiceLookup, ServiceLookupName, ServiceMap } from './service';
 import type { SuggestedString } from '../utils/string';
 import type { IsStrict } from './strictness';
 
 /**
- * Root lookups without strict mode: develop's signatures, so mocks such as `app.service = () => ({})`
- * keep compiling and explicit type arguments stay rejected. Registered names are listed for completion.
+ * Root lookups without strict mode: develop's signatures, verbatim, so mocks such as
+ * `app.service = () => ({})` keep compiling and explicit type arguments stay rejected. Registered
+ * names are listed for completion only with strict types.
  */
 type LegacyLookups = {
-  service(
-    uid: SuggestedString<Extract<RegisteredServiceUID, UID.Service>, UID.Service>
-  ): Core.Service;
-  controller(
-    uid: SuggestedString<Extract<RegisteredControllerUID, UID.Controller>, UID.Controller>
-  ): Core.Controller;
-  policy(name: SuggestedString<RegisteredPolicyName>): Core.Policy;
-  middleware(name: SuggestedString<RegisteredMiddlewareName>): Core.MiddlewareFactory;
-  plugin(name: SuggestedString<RegisteredPluginName>): Core.Plugin;
-  api(name: SuggestedString<RegisteredApiName>): Core.Module;
+  service(uid: UID.Service): Core.Service;
+  controller(uid: UID.Controller): Core.Controller;
+  policy(name: string): Core.Policy;
+  middleware(name: string): Core.MiddlewareFactory;
+  plugin(name: string): Core.Plugin;
   hook(name: string): any;
+  api(name: string): Core.Module;
 };
 
 /** Root lookups with strict mode: registered names resolve to their contracts. */

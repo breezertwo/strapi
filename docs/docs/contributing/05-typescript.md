@@ -617,6 +617,13 @@ types.
 
 ## Keeping types unchanged without strict mode
 
+Without strict mode, the exported types of `@strapi/types` and `@strapi/strapi` print exactly like
+the previous release's: same parameters, same results, same imports (for example `Strapi.log` reads
+`Logger` from `@strapi/logger`). Other packages may change their types, but never narrow what they
+accept or return. Completion lists of registered names are a strict mode feature: without strict
+mode, `strapi.service(uid)` takes `UID.Service` and `strapi.policy(name)` takes `string`, even when
+registries declare names.
+
 A type in `@strapi/types` or `@strapi/strapi` that behaves differently in strict mode resolves
 both shapes from `IsStrict` (`packages/core/types/src/core/strictness.ts`). Other packages read the
 same switch as `Core.IsStrict`:
