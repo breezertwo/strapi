@@ -55,10 +55,23 @@ export type EventListener<TName extends string> = [TName] extends [RegisteredEve
  * types.
  *
  * Subscribers (`subscribe`) receive every event, registered or not, so they keep any arguments.
+ *
+ * `destroy`, `removeAllListeners` and `removeAllSubscribers` return the hub they are called on, so a
+ * chained emit keeps the registered contract. They return `StrictEventHub` rather than polymorphic
+ * `this`, mirroring `EventHub`, which names its own type: no type extends the hub, so `this` would
+ * only add a polymorphic check to every implementation.
  */
 export interface StrictEventHub extends Omit<
   EventHub,
-  'emit' | 'on' | 'off' | 'once' | 'removeListener' | 'addListener'
+  | 'emit'
+  | 'on'
+  | 'off'
+  | 'once'
+  | 'removeListener'
+  | 'addListener'
+  | 'destroy'
+  | 'removeAllListeners'
+  | 'removeAllSubscribers'
 > {
   /** Runs the listeners of `eventName`, then every subscriber, one at a time, with `args`. */
   emit<const TName extends EventLookupName>(
@@ -87,4 +100,10 @@ export interface StrictEventHub extends Omit<
     eventName: TName,
     listener: EventListener<TName>
   ): void;
+  /** Removes every listener and every subscriber. Returns the hub. */
+  destroy(): StrictEventHub;
+  /** Removes every listener. Returns the hub. */
+  removeAllListeners(): StrictEventHub;
+  /** Removes every subscriber, the one that runs listeners included. Returns the hub. */
+  removeAllSubscribers(): StrictEventHub;
 }

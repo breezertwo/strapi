@@ -68,3 +68,16 @@ strapi.eventHub.subscribe(async (eventName, ...args) => {
   eventName satisfies string;
   args satisfies unknown[];
 });
+
+// Cleanup methods return the hub, so a chained emit or listener keeps the registered contract.
+// @ts-expect-error A payload off the contract, after `removeAllListeners()`.
+strapi.eventHub.removeAllListeners().emit('event-lab.user.delete', { userId: 1 });
+// @ts-expect-error A payload off the contract, after `removeAllSubscribers()`.
+strapi.eventHub.removeAllSubscribers().emit('event-lab.user.delete', { userId: 1 });
+// @ts-expect-error A payload off the contract, after `destroy()`.
+strapi.eventHub.destroy().emit('event-lab.user.delete', { userId: 1 });
+strapi.eventHub.destroy().on('event-lab.user.delete', (payload) => {
+  type Payload = typeof payload;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  type Check = Expect<Equal<Payload, { user: LabUser } | { users: LabUser[] }>>;
+});
