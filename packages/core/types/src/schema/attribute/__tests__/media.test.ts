@@ -1,5 +1,5 @@
 // Media types with strict types (this program loads `@strapi/types/strict`). Without strict types,
-// `tests/strict-off.ts` pins develop's loose types.
+// `tests/strict-off/media.ts` pins develop's loose types.
 import type * as Data from '../../../data';
 import type * as Documents from '../../../modules/documents';
 import type * as EntityService from '../../../modules/entity-service';

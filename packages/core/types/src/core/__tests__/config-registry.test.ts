@@ -300,7 +300,8 @@ const provider: ConfigProvider = {
 };
 provider.get('plugin::config-lab').limit satisfies number;
 // Strict `get` overloads are related with erased generics, so assigned functions are not checked
-// against `T` (see `StrictConfigGetter`). Without strict mode, strict-off.ts still rejects them.
+// against `T` (see `StrictConfigGetter`). Without strict mode, tests/strict-off/config.ts still
+// rejects them.
 provider.get = () => ({ limit: 1 });
 contextual.port satisfies number;
 // The global `strapi` instance resolves through the same registries.
