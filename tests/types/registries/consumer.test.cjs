@@ -1484,3 +1484,61 @@ test('an application declares its permission action IDs from the actions it regi
     );
   }
 });
+
+// `Hooks`, `Stores`, `Events` and `PermissionActions` are additive: an application that redeclares
+// a package key with another value merges into the same interface. The first declaration in program
+// order wins, and TS2717 is reported on the later one only where it is type-checked: never in a
+// package declaration with `skipLibCheck`, the default in Strapi applications.
+test('a redeclared additive registry key keeps the first declaration in program order', () => {
+  const compile = compiler({ ...baseOptions, ...resolutions.Bundler });
+  const application = fixture('additive-redeclare.ts');
+  const core = path.join(repository, 'packages/core/core/dist/types/index.d.ts');
+  assert.ok(fs.existsSync(core), `Missing ${core}. Build the packages before this test.`);
+  const applicationWins = {
+    EntryCreatePayload: '[{ redeclared: true; }]',
+    RepairRanValue: 'string',
+  };
+  const coreWins = { EntryCreatePayload: '[EntryEvent]', RepairRanValue: 'boolean' };
+  const conflicts = (filename) => [`${filename} TS2717`, `${filename} TS2717`];
+  for (const { order, skipLibCheck, winner, errors } of [
+    { order: [application, core], skipLibCheck: true, winner: applicationWins, errors: [] },
+    {
+      order: [application, core],
+      skipLibCheck: false,
+      winner: applicationWins,
+      errors: conflicts(core),
+    },
+    {
+      order: [core, application],
+      skipLibCheck: true,
+      winner: coreWins,
+      errors: conflicts(application),
+    },
+    {
+      order: [core, application],
+      skipLibCheck: false,
+      winner: coreWins,
+      errors: conflicts(application),
+    },
+  ]) {
+    const description = `${order.map((name) => path.basename(name)).join(' > ')}, skipLibCheck: ${skipLibCheck}`;
+    const program = compile(order, { skipLibCheck });
+    const checker = program.getTypeChecker();
+    const source = program.getSourceFile(application);
+    const resolved = {};
+    ts.forEachChild(source, (node) => {
+      if (ts.isTypeAliasDeclaration(node)) {
+        resolved[node.name.text] = checker.typeToString(checker.getTypeAtLocation(node.name));
+      }
+    });
+    assert.deepEqual(resolved, winner, description);
+    // `skipLibCheck: false` also reports errors of unrelated dependency declarations.
+    assert.deepEqual(
+      diagnostics(program)
+        .filter((diagnostic) => order.includes(diagnostic.file?.fileName))
+        .map((diagnostic) => `${diagnostic.file.fileName} TS${diagnostic.code}`),
+      errors,
+      description
+    );
+  }
+});
