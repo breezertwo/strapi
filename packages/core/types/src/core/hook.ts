@@ -15,28 +15,28 @@ export type HookHandler<TContext> = (context: TContext) => unknown;
  * Handlers run in registration order: core providers, then plugins, then the application. `delete`
  * needs the registered function itself.
  */
-export interface HookHandlers<TContext> {
+export type HookHandlers<TContext> = {
   getHandlers(): HookHandler<TContext>[];
   register(handler: HookHandler<TContext>): HookHandlers<TContext>;
   delete(handler: HookHandler<TContext>): HookHandlers<TContext>;
-}
+};
 
 /**
  * A hook created by `hooks.createAsyncParallelHook()` from `@strapi/utils`, whose caller passes
  * `TContext`. `call` runs every handler at once, each with its own deep clone of the context, so a
  * handler cannot change what the caller or the other handlers see.
  */
-export interface AsyncParallelHook<TContext> extends HookHandlers<TContext> {
+export type AsyncParallelHook<TContext> = HookHandlers<TContext> & {
   call(context: TContext): Promise<unknown[]>;
-}
+};
 
 /**
  * A hook created by `hooks.createAsyncSeriesHook()` from `@strapi/utils`, whose caller passes
  * `TContext`. `call` runs the handlers one after the other, awaiting each, with the same context.
  */
-export interface AsyncSeriesHook<TContext> extends HookHandlers<TContext> {
+export type AsyncSeriesHook<TContext> = HookHandlers<TContext> & {
   call(context: TContext): Promise<void>;
-}
+};
 
 /**
  * The context of the `strapi::content-types.beforeSync` and `afterSync` hooks, which `@strapi/core`
@@ -91,6 +91,15 @@ export type HookFor<TUID extends string> = IsStrict extends false
 
 /** A UID accepted by `strapi.hook(uid)`. Registered UIDs are listed for completion. */
 export type HookLookupName = SuggestedString<RegisteredHookUID>;
+
+/**
+ * The result of `strapi.hook(uid)` with strict types: `T` when the UID is not inferred, that is when
+ * the caller passes an explicit type argument (TypeScript then does not infer the UID) or a dynamic
+ * UID; the registered lookup otherwise.
+ */
+export type HookLookup<TUID extends HookLookupName, T> = HookLookupName extends TUID
+  ? T
+  : HookFor<TUID>;
 
 /**
  * Hooks keyed by UID, e.g. `strapi.hooks`. With strict types enabled, registered UIDs resolve to their

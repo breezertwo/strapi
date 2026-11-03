@@ -11,7 +11,7 @@ import type * as UID from '../uid';
 import type { Container } from './container';
 import type { ControllerLookup, ControllerLookupName, ControllerMap } from './controller';
 import type { MiddlewareLookup, MiddlewareLookupName, MiddlewareMap } from './middleware';
-import type { HookFor, HookLookupName, HookMap, StrictHooksRegistry } from './hook';
+import type { HookLookup, HookLookupName, HookMap, StrictHooksRegistry } from './hook';
 import type { ApiMap, RegisteredApiName } from './module';
 import type { PluginMap, RegisteredPluginName } from './plugin';
 import type { PolicyLookup, PolicyLookupName, PolicyMap } from './policy';
@@ -73,9 +73,12 @@ type StrictLookups = {
   /**
    * Resolves the registered contract of the hook `name`, whose handlers receive the context its caller
    * passes. An unregistered name resolves to `unknown`: the runtime returns `undefined` when no hook is
-   * set under it. Registered names are listed for completion.
+   * set under it. An explicit type argument (`hook<MyHook>(name)`) wins over the registries, including
+   * for unregistered names. Registered names are listed for completion.
    */
-  hook<TName extends HookLookupName>(name: TName): HookFor<TName>;
+  hook<T = unknown, TName extends HookLookupName = HookLookupName>(
+    name: TName
+  ): HookLookup<TName, NoInfer<T>>;
 };
 
 type Lookups = IsStrict extends false ? LegacyLookups : StrictLookups;

@@ -57,6 +57,22 @@ declare const lookups: [
 ];
 lookups satisfies unknown;
 
+// An explicit type argument wins over the registries, including for unregistered names, as with
+// `strapi.service<T>(uid)`. A registered literal without one still resolves to its contract.
+type ExplicitHook = AsyncSeriesHook<{ explicit: true }>;
+const explicitUnregistered = strapi.hook<ExplicitHook>('plugin::hook-lab.unregistered');
+const explicitRegistered = strapi.hook<ExplicitHook>('plugin::hook-lab.created');
+const explicitDynamic = strapi.hook<ExplicitHook>(dynamicName);
+declare const explicitLookups: [
+  Expect<Equal<typeof explicitUnregistered, ExplicitHook>>,
+  Expect<Equal<typeof explicitRegistered, ExplicitHook>>,
+  Expect<Equal<typeof explicitDynamic, ExplicitHook>>,
+];
+explicitLookups satisfies unknown;
+// @ts-expect-error The type argument is never inferred from the expected type: it stays `unknown`.
+const contextualHook: ExplicitHook = strapi.hook(dynamicName);
+contextualHook satisfies unknown;
+
 // Handlers receive the context the caller passes, and registration chains.
 strapi
   .hook('strapi::content-types.afterSync')
