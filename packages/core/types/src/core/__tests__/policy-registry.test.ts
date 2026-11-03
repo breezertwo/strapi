@@ -1,5 +1,5 @@
 import type { ControllerHandler } from '../controller';
-import type { Module } from '../module';
+import type { ModuleOf } from '../module';
 import type { Plugin } from '../plugin';
 import type { Policy, PolicyContext, PolicyHandler } from '../policy';
 import type { RouteConfigFor, RouteInput } from '../route';
@@ -242,7 +242,7 @@ const apiExplicitRegistered = strapi.api('policy-lab').policy<LabPolicy>('hasRol
 const adminModulePolicy = strapi.admin.policy('policyLab');
 declare const apiLookupChecks: [
   Expect<Equal<typeof apiHasRole, Policy<{ apiRole: string }>>>,
-  Expect<Equal<typeof apiHasRole, Module<'api::policy-lab'>['policies']['hasRole']>>,
+  Expect<Equal<typeof apiHasRole, ModuleOf<'api::policy-lab'>['policies']['hasRole']>>,
   Expect<Equal<typeof apiUnregistered, unknown>>,
   Expect<Equal<typeof apiFullName, unknown>>,
   Expect<Equal<typeof apiDynamic, unknown>>,

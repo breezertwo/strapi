@@ -1,7 +1,7 @@
 import type * as Core from '..';
 import type { ControllerHandler } from '../controller';
 import type { Middleware, MiddlewareFactory, MiddlewareHandler } from '../middleware';
-import type { Module } from '../module';
+import type { ModuleOf } from '../module';
 import type { Plugin } from '../plugin';
 import type { RouteConfigFor, RouteInput } from '../route';
 import type { RouterInputFor } from '../router';
@@ -160,7 +160,7 @@ const apiExplicit = strapi.api('middleware-lab').middleware<LabFactory>('unregis
 const adminModuleMiddleware = strapi.admin.middleware('middlewareLab');
 declare const apiLookupChecks: [
   Expect<Equal<typeof apiAudit, MiddlewareFactory<{ channel: string }>>>,
-  Expect<Equal<typeof apiAudit, Module<'api::middleware-lab'>['middlewares']['audit']>>,
+  Expect<Equal<typeof apiAudit, ModuleOf<'api::middleware-lab'>['middlewares']['audit']>>,
   Expect<Equal<typeof apiUnregistered, unknown>>,
   Expect<Equal<typeof apiExplicit, LabFactory>>,
   Expect<Equal<typeof adminModuleMiddleware, Middleware>>,

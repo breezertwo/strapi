@@ -5,7 +5,7 @@ import type {
   MiddlewareFactory,
   RegisteredMiddlewareName,
 } from './middleware';
-import type { Module } from './module';
+import type { Module, ModuleOf } from './module';
 import type { Route } from './route';
 import type { Router } from './router';
 import type { Policy, PolicyConfigFor, RegisteredPolicyName } from './policy';
@@ -187,7 +187,7 @@ type StrictPluginConfigGetter<TName extends string> = {
 type PluginModule<TName extends string> = IsStrict extends false
   ? Omit<Module, 'routes'>
   : Omit<
-      Module<`plugin::${TName}`>,
+      ModuleOf<`plugin::${TName}`>,
       'routes' | 'service' | 'config' | 'controller' | 'policy' | 'middleware'
     >;
 
@@ -225,12 +225,18 @@ type PluginMembers<TName extends string> = IsStrict extends false
       StrictPluginMiddlewareGetter<TName>;
 
 /**
- * A loaded plugin. With strict types enabled, a literal `TName` types its lookups and maps from the
- * registries. Without them, every plugin keeps develop's type, so mocks and `@ts-expect-error` lines
- * written for develop keep compiling, and `config` defaults infer widening literals, e.g.
- * `let limit = config('limit', 10)` is a `number`.
+ * The loaded plugin `TName`. With strict types enabled, a literal `TName` types its lookups and maps
+ * from the registries. Without them, every plugin keeps develop's type, so mocks and
+ * `@ts-expect-error` lines written for develop keep compiling, and `config` defaults infer widening
+ * literals, e.g. `let limit = config('limit', 10)` is a `number`.
  */
-export type Plugin<TName extends string = string> = PluginModule<TName> & PluginMembers<TName>;
+export type PluginOf<TName extends string> = PluginModule<TName> & PluginMembers<TName>;
+
+/**
+ * A loaded plugin of any name. Not generic, so it prints `Plugin` as on develop; `PluginOf<name>`
+ * types a plugin from the registries.
+ */
+export type Plugin = PluginModule<string> & PluginMembers<string>;
 
 /** The plugin name of a `plugin::<plugin>.<name>` UID or a `plugin::<plugin>` config namespace. */
 type PluginNameOf<TUID> = TUID extends `plugin::${infer TPlugin}.${string}`
@@ -250,8 +256,8 @@ export type RegisteredPluginName = PluginNameOf<
 
 /**
  * Plugins keyed by name, e.g. `strapi.plugins`. With strict types enabled, a registered plugin resolves
- * to `Plugin<name>`, like `strapi.plugin(name)`; other names, literal or dynamic, resolve to `Plugin`.
+ * to `PluginOf<name>`, like `strapi.plugin(name)`; other names, literal or dynamic, resolve to `Plugin`.
  */
 export type PluginMap = IsStrict extends false
   ? Record<string, Plugin>
-  : RegisteredRecord<{ [TPlugin in RegisteredPluginName]: Plugin<TPlugin> }, Plugin>;
+  : RegisteredRecord<{ [TPlugin in RegisteredPluginName]: PluginOf<TPlugin> }, Plugin>;

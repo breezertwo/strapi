@@ -123,7 +123,7 @@ const pluginLocales = app.plugin('i18n').services.locales;
 pluginLocales.getDefaultLocale() satisfies Promise<string | null>;
 // @ts-expect-error Plugin maps use the registered service contract.
 pluginLocales.missing();
-// @ts-expect-error The plugins map resolves `Plugin<'i18n'>` for registered plugins.
+// @ts-expect-error The plugins map resolves `PluginOf<'i18n'>` for registered plugins.
 app.plugins.i18n.services.locales.missing();
 // @ts-expect-error The global instance uses the same plural contracts.
 strapi.plugin('i18n').services.locales.missing();

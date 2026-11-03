@@ -334,12 +334,12 @@ type ModuleConfigGetter<TNamespace extends string> = IsStrict extends false
   : StrictModuleConfigGetter<TNamespace>;
 
 /**
- * A loaded module. `TNamespace` is its runtime namespace, e.g. `plugin::i18n` or `api::article`:
- * with strict types enabled, a literal namespace types the `services`, `controllers`, `policies` and
- * `middlewares` maps from the registries, the `service`, `controller`, `policy` and `middleware`
- * lookups of API modules, and `config` from the config registries.
+ * A loaded module of the namespace `TNamespace`, its runtime namespace, e.g. `plugin::i18n` or
+ * `api::article`: with strict types enabled, a literal namespace types the `services`,
+ * `controllers`, `policies` and `middlewares` maps from the registries, the `service`, `controller`,
+ * `policy` and `middleware` lookups of API modules, and `config` from the config registries.
  */
-export interface Module<TNamespace extends string = string>
+export interface ModuleOf<TNamespace extends string>
   extends ModuleLookups<TNamespace>, ModuleConfigGetter<TNamespace> {
   bootstrap: ({ strapi }: { strapi: Strapi }) => void | Promise<void>;
   destroy: ({ strapi }: { strapi: Strapi }) => void | Promise<void>;
@@ -352,6 +352,13 @@ export interface Module<TNamespace extends string = string>
   contentTypes: Record<string, { schema: ContentType }>;
 }
 
+/**
+ * A loaded module of any namespace, e.g. `strapi.admin`. Not generic, so it prints `Module` as on
+ * develop; `ModuleOf<namespace>` types a module from the registries.
+ */
+// eslint-disable-next-line @typescript-eslint/no-empty-interface -- a non-generic interface prints `Module`
+export interface Module extends ModuleOf<string> {}
+
 /** The API name of an `api::<api>.<name>` UID. */
 type ApiNameOf<TUID> = TUID extends `api::${infer TApi}.${string}` ? TApi : never;
 
@@ -362,8 +369,8 @@ export type RegisteredApiName = ApiNameOf<
 
 /**
  * APIs keyed by name, e.g. `strapi.apis`. With strict types enabled, a registered API resolves to
- * `Module<'api::<name>'>`, like `strapi.api(name)`; other names, literal or dynamic, resolve to `Module`.
+ * `ModuleOf<'api::<name>'>`, like `strapi.api(name)`; other names, literal or dynamic, resolve to `Module`.
  */
 export type ApiMap = IsStrict extends false
   ? Record<string, Module>
-  : RegisteredRecord<{ [TApi in RegisteredApiName]: Module<`api::${TApi}`> }, Module>;
+  : RegisteredRecord<{ [TApi in RegisteredApiName]: ModuleOf<`api::${TApi}`> }, Module>;

@@ -1,6 +1,6 @@
 import type { Controller, ControllerHandler } from '../controller';
 import type { Module, RegisteredApiName } from '../module';
-import type { Plugin, RegisteredPluginName } from '../plugin';
+import type { Plugin, PluginOf, RegisteredPluginName } from '../plugin';
 import type { Policy, PolicyContext } from '../policy';
 import type { Service } from '../service';
 import type { Strapi as StrapiInstance } from '../strapi';
@@ -83,7 +83,7 @@ declare const registered: [
   Expect<Equal<typeof apiModuleService, LabService>>,
   Expect<Equal<typeof mappedApiController, LabController>>,
   Expect<Equal<typeof mappedApiPolicy, Policy<{ level: number }>>>,
-  Expect<Equal<typeof configOnlyPlugin, Plugin<'map-lab-config'>>>,
+  Expect<Equal<typeof configOnlyPlugin, PluginOf<'map-lab-config'>>>,
 ];
 registered satisfies unknown;
 

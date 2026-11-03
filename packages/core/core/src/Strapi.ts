@@ -229,8 +229,8 @@ class Strapi extends Container implements Core.Strapi {
     return this.get('plugins').getAll();
   }
 
-  plugin<TName extends string>(name: TName): Core.Plugin<TName> {
-    return this.get('plugins').get(name) as Core.Plugin<TName>;
+  plugin<TName extends string>(name: TName): Core.PluginOf<TName> {
+    return this.get('plugins').get(name) as Core.PluginOf<TName>;
   }
 
   get hooks() {
@@ -245,7 +245,7 @@ class Strapi extends Container implements Core.Strapi {
     return this.get('apis').getAll();
   }
 
-  api<TName extends string>(name: TName): Core.Module<`api::${TName}`> {
+  api<TName extends string>(name: TName): Core.ModuleOf<`api::${TName}`> {
     return this.get('apis').get(name);
   }
 

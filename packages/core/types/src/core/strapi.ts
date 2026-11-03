@@ -67,9 +67,11 @@ type StrictLookups = {
     name: TName
   ): MiddlewareLookup<TName, NoInfer<T>>;
   /** Plugins with registered contracts are listed for completion. */
-  plugin<TName extends SuggestedString<RegisteredPluginName>>(name: TName): Core.Plugin<TName>;
+  plugin<TName extends SuggestedString<RegisteredPluginName>>(name: TName): Core.PluginOf<TName>;
   /** APIs with registered contracts are listed for completion. */
-  api<TName extends SuggestedString<RegisteredApiName>>(name: TName): Core.Module<`api::${TName}`>;
+  api<TName extends SuggestedString<RegisteredApiName>>(
+    name: TName
+  ): Core.ModuleOf<`api::${TName}`>;
   /**
    * Resolves the registered contract of the hook `name`, whose handlers receive the context its caller
    * passes. An unregistered name resolves to `unknown`: the runtime returns `undefined` when no hook is
@@ -285,7 +287,7 @@ export interface Strapi extends StrapiContainer, Lookups {
   middlewares: MiddlewareMap;
   /**
    * Plugins keyed by name. With strict types enabled, a plugin with registered contracts resolves to
-   * `Plugin<name>`, like `plugin(name)`; other names keep the legacy plugin.
+   * `PluginOf<name>`, like `plugin(name)`; other names keep the legacy plugin.
    */
   plugins: PluginMap;
   /**
@@ -295,7 +297,7 @@ export interface Strapi extends StrapiContainer, Lookups {
   hooks: HookMap;
   /**
    * APIs keyed by name. With strict types enabled, an API with registered contracts resolves to
-   * `Module<'api::<name>'>`, like `api(name)`; other names keep the legacy module.
+   * `ModuleOf<'api::<name>'>`, like `api(name)`; other names keep the legacy module.
    */
   apis: ApiMap;
   auth: Modules.Auth.AuthenticationService;

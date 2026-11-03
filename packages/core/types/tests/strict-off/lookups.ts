@@ -115,7 +115,7 @@ declare const policyAndApiChecks: [
   Expect<Equal<typeof registeredPolicy, Core.Policy>>,
   Expect<Equal<typeof unregisteredPolicy, Core.Policy>>,
   Expect<Equal<typeof dynamicPolicy, Core.Policy>>,
-  Expect<Equal<Core.Plugin<'legacy'>['policy'], any>>,
+  Expect<Equal<Core.PluginOf<'legacy'>['policy'], any>>,
   Expect<Equal<typeof pluginPolicy, any>>,
   Expect<Equal<typeof apiService, Core.Service>>,
   Expect<Equal<typeof apiController, Core.Controller>>,
@@ -166,9 +166,9 @@ strapi.api('legacy').policy('hasRole');
 strapi.admin.policy('unregistered');
 declare const modulePolicyChecks: [
   Expect<Equal<'policy' extends keyof Core.Module ? true : false, false>>,
-  Expect<Equal<Core.Plugin<'legacy'>['policy'], any>>,
+  Expect<Equal<Core.PluginOf<'legacy'>['policy'], any>>,
   // The plugin name does not change the plugin type without strict types.
-  Expect<Equal<Core.Plugin<'legacy'>, Core.Plugin>>,
+  Expect<Equal<Core.PluginOf<'legacy'>, Core.Plugin>>,
 ];
 modulePolicyChecks satisfies unknown;
 
