@@ -16,3 +16,24 @@ type PermissionActionChecks = [
 ];
 declare const permissionActionChecks: PermissionActionChecks;
 permissionActionChecks satisfies unknown;
+
+// The entries of an `as const` action list do not depend on the switch.
+const actions = [
+  { section: 'plugins', displayName: 'Export', uid: 'reports.export' },
+  { section: 'plugins', displayName: 'Read', uid: 'items.read', pluginName: 'my-plugin' },
+  { section: 'settings', displayName: 'Users', uid: 'users.read', pluginName: 'admin' },
+] as const;
+type PermissionActionsOfChecks = [
+  Expect<
+    Equal<
+      Core.PermissionActionsOf<typeof actions>,
+      {
+        'api::reports.export': true;
+        'plugin::my-plugin.items.read': true;
+        'admin::users.read': true;
+      }
+    >
+  >,
+];
+declare const permissionActionsOfChecks: PermissionActionsOfChecks;
+permissionActionsOfChecks satisfies unknown;

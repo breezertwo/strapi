@@ -86,6 +86,25 @@ export type PermissionActionId<TAction extends PermissionActionIdSource> = TActi
     >
   : never;
 
+/**
+ * The `Strapi.Registries.PermissionActions` entries of the actions an app or plugin registers: one
+ * `true` entry per computed ID ({@link PermissionActionId}). Derive it from the same `as const` list
+ * passed to `registerMany`, so the declaration cannot drift from the registration.
+ *
+ * @example
+ * ```ts
+ * declare global {
+ *   namespace Strapi.Registries {
+ *     interface PermissionActions extends Core.PermissionActionsOf<typeof actions> {}
+ *   }
+ * }
+ * ```
+ */
+export type PermissionActionsOf<TActions extends readonly PermissionActionIdSource[]> = Record<
+  PermissionActionId<TActions[number]>,
+  true
+>;
+
 /** Whether `TId` is registered or known only at runtime. */
 type IsCheckedPermissionAction<TId extends string> =
   IsDynamicName<TId> extends true

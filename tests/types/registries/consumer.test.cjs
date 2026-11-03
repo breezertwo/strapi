@@ -1472,3 +1472,15 @@ test('a contract reference that no longer resolves is reported with skipLibCheck
     fs.rmSync(appDir, { recursive: true, force: true });
   }
 });
+
+test('an application declares its permission action IDs from the actions it registers', () => {
+  for (const [resolution, resolutionOptions] of Object.entries(resolutions)) {
+    assertClean(
+      compiler({ ...baseOptions, ...resolutionOptions })([
+        'settings.d.ts',
+        'permission-actions-app.ts',
+      ]),
+      `${resolution}, permission action IDs declared with Core.PermissionActionsOf`
+    );
+  }
+});
