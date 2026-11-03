@@ -9,6 +9,88 @@ namespace. Contracts only change lookup types in strict mode, which applications
 `@strapi/strapi/strict-types` entry. Without strict mode, the `@strapi/types` and `@strapi/strapi`
 types must stay those of the previous release.
 
+## Strict types in applications
+
+The TypeScript templates of `create-strapi-app` turn strict types on in `config/typescript.ts`:
+
+```ts
+// config/typescript.ts
+import type { Core } from '@strapi/strapi';
+
+const config: Core.Config.TypeScript = {
+  strictTypes: true,
+  // With a license, list its features (e.g. 'sso') to type their license-gated contracts
+  // licensedFeatures: [],
+};
+
+export default config;
+```
+
+- Default on means the template sets the flag. An application without `typescript.strictTypes`,
+  such as one created before this release, keeps strict types off.
+- With the flag, `strapi develop` and `strapi ts:generate-types` also generate
+  `types/generated/strict.d.ts`, `plugins.d.ts`, and the application's service, controller, policy
+  and middleware registries. Read
+  [Strict service contracts](../packages/core/types/type-system/02-concepts/03-public-registry.mdx#strict-service-contracts-typescriptstricttypes).
+- To opt out, set `strictTypes: false` or remove the key. The next type generation removes the
+  strict files, and the types are those of the previous release. A value that is not a boolean
+  fails type generation with a `ValidationError`.
+
+### Strict errors fail the build
+
+The template `tsconfig.json` sets `noEmitOnError`, and `strapi build` compiles the server with
+diagnostics enabled ([`node/build.ts`](https://github.com/strapi/strapi/blob/develop/packages/core/strapi/src/node/build.ts)).
+`strapi develop` runs the same compilation after it generates types
+([`node/develop.ts`](https://github.com/strapi/strapi/blob/develop/packages/core/strapi/src/node/develop.ts)).
+With strict types, a lookup, route or config that the registered contracts reject is a type
+error, so it stops both commands.
+
+### Licensed features
+
+An application that runs with a license lists its features in `licensedFeatures`. Without the
+list, every license-gated contract is `undefined`. Code that guards a gated lookup with `?.` or
+`if` then fails: the check narrows the lookup to `never`, e.g. TS2339 "Property
+'getAssignedWorkflow' does not exist on type 'never'". Read
+[License-gated contracts](#license-gated-contracts).
+
+Type generation follows `licensedFeatures`, never the license it boots with. When the two
+disagree, it logs a warning and generates the same files:
+
+- The boot license includes a feature that the list lacks: its contracts are typed `undefined`.
+  Add the feature to `licensedFeatures`.
+- The list names a feature that the boot license lacks: its contracts are typed, but they are
+  `undefined` at runtime.
+
+### Plugins without contracts
+
+Lookups of a plugin that publishes no contracts resolve to `unknown`. This is intended, and Strapi
+does not infer contracts from a plugin's runtime. It covers:
+
+- Local plugins (`src/plugins/*`) and third-party plugins whose server declaration
+  (`<package>/strapi-server`) does not augment `Strapi.Registries`. Type generation reads the
+  application's `src/api` and `src/` modules, never the code of a plugin.
+- Users-permissions, which is JavaScript, until
+  [#27928](https://github.com/strapi/strapi/pull/27928) adds its contracts.
+
+A lookup stays `unknown` until the plugin publishes contracts. Until then, pass the type
+explicitly. For a name without a contract, both lookups return the type argument:
+
+```ts
+const service = strapi.service<MyService>('plugin::my-plugin.my-service');
+const sameService = strapi.plugin('my-plugin').service<MyService>('my-service');
+```
+
+The packages of this monorepo declare their contracts by hand (`*Contract` types), and lookups use
+these declared contracts first. A plugin author publishes contracts the same way: read
+[Declaring a package's contracts](#declaring-a-packages-contracts).
+
+### Permission action IDs
+
+With strict types, the permission actions named in typed configs, such as the `actions` of
+`admin::hasPermissions`, accept declared IDs only. An application declares the IDs it registers
+from its `as const` action list with `Core.PermissionActionsOf`. Read
+[Permission action contracts](#permission-action-contracts).
+
 ## Strict mode in the monorepo
 
 Strapi's server packages type-check in strict mode. The shared `tsconfig/server.json` preset
