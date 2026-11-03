@@ -136,21 +136,30 @@ export type PluginsWithoutContracts = [
 ];
 
 // An application permission action: the `as const` list an application passes to `registerMany`,
-// and its ID in the typed config of `admin::hasPermissions`. The IDs bundled packages declare close
-// the inventory, so an ID the application does not declare is rejected.
+// its declared ID, and the ID in the typed config of `admin::hasPermissions`. The IDs bundled
+// packages declare close the inventory, so an ID the application does not declare is rejected.
 export const reportActions = [
   { section: 'plugins', displayName: 'Export reports', uid: 'report.export' },
 ] as const;
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace Strapi {
+    // eslint-disable-next-line @typescript-eslint/no-namespace
+    namespace Registries {
+      // An interface merges into the registry: a type alias cannot.
+      // eslint-disable-next-line @typescript-eslint/no-empty-interface
+      interface PermissionActions extends Core.PermissionActionsOf<typeof reportActions> {}
+    }
+  }
+}
 const reportRouteConfig = {
   policies: [
     { name: 'admin::hasPermissions', config: { actions: ['plugin::upload.read'] } },
+    { name: 'admin::hasPermissions', config: { actions: ['api::report.export'] } },
     {
       name: 'admin::hasPermissions',
-      config: {
-        // The application does not declare `api::report.export` in `PermissionActions` yet.
-        // @ts-expect-error GAP U30
-        actions: ['api::report.export'],
-      },
+      // @ts-expect-error A typo is not a declared ID.
+      config: { actions: ['api::report.exprot'] },
     },
   ],
 } satisfies Core.RouteConfigFor;
