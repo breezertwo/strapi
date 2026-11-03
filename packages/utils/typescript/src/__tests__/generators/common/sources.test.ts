@@ -1,12 +1,14 @@
 import os from 'node:os';
 import path from 'node:path';
 import fs from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 
 import { compareCodeUnits } from '../../../generators/common/compare';
 import {
   filterRegisteredSources,
   findTypeExports,
   hasModuleType,
+  normalizeName,
   scanSources,
   toImportSpecifier,
 } from '../../../generators/common/sources';
@@ -27,6 +29,17 @@ describe('compareCodeUnits', () => {
 
   test('equal strings compare as 0', () => {
     expect(compareCodeUnits('global::cors', 'global::cors')).toBe(0);
+  });
+});
+
+// Shared with the API loader of @strapi/core, which registers the uids the generators derive
+const kebabNames: { cases: Array<[string, string]> } = JSON.parse(
+  readFileSync(path.join(__dirname, '../../../../../../../tests/fixtures/kebab-names.json'), 'utf8')
+);
+
+describe('normalizeName', () => {
+  test.each(kebabNames.cases)('normalizes %j to %j', (name, expected) => {
+    expect(normalizeName(name)).toBe(expected);
   });
 });
 

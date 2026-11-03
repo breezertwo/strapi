@@ -39,10 +39,11 @@ export type AppModuleKind = 'services' | 'controllers' | 'policies' | 'middlewar
  * Mirror of the API loader's name normalization (@strapi/core, loaders/apis.ts): names already in
  * kebab-case are kept as is, anything else is kebab-cased. Both must agree for the generated uids
  * to match the ones registered at runtime. Global policies and middlewares (loaders/policies.ts,
- * loaders/middlewares.ts) are not normalized.
+ * loaders/middlewares.ts) are not normalized. Both sides run the cases of
+ * tests/fixtures/kebab-names.json (repository root).
  */
 const isKebabCase = (value: string) => /^([a-z][a-z0-9]*)(-[a-z0-9]+)*$/.test(value);
-const normalizeName = (name: string) => (isKebabCase(name) ? name : kebabCase(name));
+export const normalizeName = (name: string) => (isKebabCase(name) ? name : kebabCase(name));
 
 const isSourceFile = (fd: Dirent) =>
   fd.isFile() && !fd.name.endsWith('.d.ts') && SOURCE_EXTENSIONS.includes(path.extname(fd.name));
