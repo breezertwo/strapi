@@ -11,7 +11,7 @@ import type * as UID from '../uid';
 import type { Container } from './container';
 import type {
   ControllerLookup,
-  ControllerLookupUID,
+  ControllerLookupName,
   ControllerMap,
   RegisteredControllerUID,
 } from './controller';
@@ -21,11 +21,11 @@ import type {
   MiddlewareMap,
   RegisteredMiddlewareName,
 } from './middleware';
-import type { HookFor, HookLookupUID, HookMap, StrictHooksRegistry } from './hook';
+import type { HookFor, HookLookupName, HookMap, StrictHooksRegistry } from './hook';
 import type { ApiMap, RegisteredApiName } from './module';
 import type { PluginMap, RegisteredPluginName } from './plugin';
 import type { PolicyLookup, PolicyLookupName, PolicyMap, RegisteredPolicyName } from './policy';
-import type { RegisteredServiceUID, ServiceLookup, ServiceLookupUID, ServiceMap } from './service';
+import type { RegisteredServiceUID, ServiceLookup, ServiceLookupName, ServiceMap } from './service';
 import type { SuggestedString } from '../utils/string';
 import type { IsStrict } from './strictness';
 
@@ -53,14 +53,14 @@ type StrictLookups = {
    * Resolves the registered contract of `uid`. An explicit type argument (`service<MyService>(uid)`)
    * wins over the registries, including for unregistered names.
    */
-  service<T = unknown, TUID extends ServiceLookupUID = ServiceLookupUID>(
+  service<T = unknown, TUID extends ServiceLookupName = ServiceLookupName>(
     uid: TUID
   ): ServiceLookup<TUID, NoInfer<T>>;
   /**
    * Resolves the registered contract of `uid`. An explicit type argument (`controller<MyController>(uid)`)
    * wins over the registries, including for unregistered names.
    */
-  controller<T = unknown, TUID extends ControllerLookupUID = ControllerLookupUID>(
+  controller<T = unknown, TUID extends ControllerLookupName = ControllerLookupName>(
     uid: TUID
   ): ControllerLookup<TUID, NoInfer<T>>;
   /**
@@ -88,7 +88,7 @@ type StrictLookups = {
    * passes. An unregistered name resolves to `unknown`: the runtime returns `undefined` when no hook is
    * set under it. Registered names are listed for completion.
    */
-  hook<TName extends HookLookupUID>(name: TName): HookFor<TName>;
+  hook<TName extends HookLookupName>(name: TName): HookFor<TName>;
 };
 
 type Lookups = IsStrict extends false ? LegacyLookups : StrictLookups;

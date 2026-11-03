@@ -1,9 +1,9 @@
 import type * as UID from '../../uid';
-import type { ControllerLookupUID } from '../controller';
+import type { ControllerLookupName } from '../controller';
 import type { MiddlewareLookupName, MiddlewareReference } from '../middleware';
 import type { Module } from '../module';
 import type { PolicyReference } from '../policy';
-import type { ServiceLookupUID } from '../service';
+import type { ServiceLookupName } from '../service';
 import type { ConfigPathSuggestion, Strapi as StrapiInstance } from '../strapi';
 
 // Completion candidates are checked as types: editors list the literal members of these types.
@@ -66,11 +66,11 @@ pathChecks satisfies unknown;
 
 declare const nameChecks: [
   // Full UID lookups list registered UIDs, and keep accepting every UID of the pattern.
-  Expect<Includes<ServiceLookupUID, 'plugin::suggest-lab.greeting'>>,
-  Expect<Includes<ServiceLookupUID, 'api::suggest-lab.greeting'>>,
-  Expect<Includes<ServiceLookupUID, UID.Service>>,
-  Expect<Includes<ControllerLookupUID, 'plugin::suggest-lab.items'>>,
-  Expect<Includes<ControllerLookupUID, UID.Controller>>,
+  Expect<Includes<ServiceLookupName, 'plugin::suggest-lab.greeting'>>,
+  Expect<Includes<ServiceLookupName, 'api::suggest-lab.greeting'>>,
+  Expect<Includes<ServiceLookupName, UID.Service>>,
+  Expect<Includes<ControllerLookupName, 'plugin::suggest-lab.items'>>,
+  Expect<Includes<ControllerLookupName, UID.Controller>>,
   // Typed route policies list registered names in both switch states.
   Expect<Includes<PolicyReference, 'plugin::suggest-lab.isOwner'>>,
   Expect<Includes<PolicyReference<'plugin::suggest-lab'>, 'isOwner'>>,

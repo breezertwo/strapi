@@ -22,7 +22,7 @@ export type ServiceFor<TUID extends string> = IsStrict extends false
  * the caller passes an explicit type argument (TypeScript then does not infer the UID) or a dynamic
  * UID; the registered lookup otherwise.
  */
-export type ServiceLookup<TUID extends ServiceLookupUID, T> = UID.Service extends TUID
+export type ServiceLookup<TUID extends ServiceLookupName, T> = UID.Service extends TUID
   ? T
   : ServiceFor<TUID>;
 
@@ -36,7 +36,7 @@ export type RegisteredServiceUID = Extract<
 >;
 
 /** A UID accepted by `strapi.service(uid)`. Registered UIDs are listed for completion. */
-export type ServiceLookupUID = SuggestedString<RegisteredServiceUID, UID.Service>;
+export type ServiceLookupName = SuggestedString<RegisteredServiceUID, UID.Service>;
 
 /**
  * Services keyed by UID, e.g. `strapi.services`. With strict types enabled, registered UIDs resolve to

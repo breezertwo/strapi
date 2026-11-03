@@ -18,8 +18,8 @@ declare const checks: [
   >,
   // Registered names are still listed for completion.
   Expect<Equal<'plugin::legacy.timer' extends Core.MiddlewareReference ? true : false, true>>,
-  Expect<SameValues<Core.ServiceLookupUID, UID.Service>>,
-  Expect<SameValues<Core.ControllerLookupUID, UID.Controller>>,
+  Expect<SameValues<Core.ServiceLookupName, UID.Service>>,
+  Expect<SameValues<Core.ControllerLookupName, UID.Controller>>,
   // Unregistered literal names keep the legacy types: only strict types close them to `never`.
   Expect<Equal<Core.ServiceFor<'plugin::unregistered.example'>, Core.Service>>,
   Expect<Equal<Core.ControllerFor<'plugin::unregistered.example'>, Core.Controller>>,

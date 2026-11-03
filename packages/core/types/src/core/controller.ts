@@ -25,7 +25,7 @@ export type ControllerFor<TUID extends string> = IsStrict extends false
  * when the caller passes an explicit type argument (TypeScript then does not infer the UID) or a
  * dynamic UID; the registered lookup otherwise.
  */
-export type ControllerLookup<TUID extends ControllerLookupUID, T> = UID.Controller extends TUID
+export type ControllerLookup<TUID extends ControllerLookupName, T> = UID.Controller extends TUID
   ? T
   : ControllerFor<TUID>;
 
@@ -39,7 +39,7 @@ export type RegisteredControllerUID = Extract<
 >;
 
 /** A UID accepted by `strapi.controller(uid)`. Registered UIDs are listed for completion. */
-export type ControllerLookupUID = SuggestedString<RegisteredControllerUID, UID.Controller>;
+export type ControllerLookupName = SuggestedString<RegisteredControllerUID, UID.Controller>;
 
 /**
  * Controllers keyed by UID, e.g. `strapi.controllers`. With strict types enabled, registered UIDs

@@ -90,7 +90,7 @@ export type HookFor<TUID extends string> = IsStrict extends false
     : unknown;
 
 /** A UID accepted by `strapi.hook(uid)`. Registered UIDs are listed for completion. */
-export type HookLookupUID = SuggestedString<RegisteredHookUID>;
+export type HookLookupName = SuggestedString<RegisteredHookUID>;
 
 /**
  * Hooks keyed by UID, e.g. `strapi.hooks`. With strict types enabled, registered UIDs resolve to their
@@ -116,11 +116,11 @@ export interface StrictHooksRegistry {
    * The hook set under `uid`, or `undefined` when nothing is: a registered contract only describes
    * the hook once its owner sets it, during its register phase.
    */
-  get<TUID extends HookLookupUID>(uid: TUID): HookFor<TUID> | undefined;
+  get<TUID extends HookLookupName>(uid: TUID): HookFor<TUID> | undefined;
   /** Hooks whose UID is in `namespace` (`'plugin::my-plugin'` or `'strapi::'`), keyed by full UID. */
   getAll(namespace?: string): Record<string, unknown>;
   /** Sets the hook of `uid`, replacing the current one and its handlers. */
-  set<TUID extends HookLookupUID>(uid: TUID, hook: HookFor<TUID>): StrictHooksRegistry;
+  set<TUID extends HookLookupName>(uid: TUID, hook: HookFor<TUID>): StrictHooksRegistry;
   /**
    * Sets each hook of `hooks` under `namespace`: `'<namespace>.<name>'`, or `'<namespace><name>'`
    * when the namespace ends with `::`. Like `set`, a registered UID accepts only its contract.
@@ -137,7 +137,7 @@ export interface StrictHooksRegistry {
    * Replaces the hook of `uid` with the result of `extendFn`, which receives the current hook.
    * Throws when no hook is set under `uid`.
    */
-  extend<TUID extends HookLookupUID>(
+  extend<TUID extends HookLookupName>(
     uid: TUID,
     extendFn: (hook: HookFor<TUID>) => HookFor<TUID>
   ): StrictHooksRegistry;
