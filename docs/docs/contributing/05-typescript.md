@@ -351,6 +351,10 @@ built at runtime register a template-literal key, e.g.
   registered key resolves to its value or `null` (no row), and a write takes its whole value. The
   type mirrors the runtime defaults: `get` reads `'core'` rows when the params have no type, `set`
   and `delete` do not. Unregistered keys, and wide keys such as `key: string`, keep `unknown`.
+- A `type` or `name` that is a union, optional, or may be `undefined` addresses every row it can
+  build, the default row included when it may be missing: a read resolves to the union of their
+  values (`unknown` if one is unregistered), and a write takes a value that fits every registered
+  one, since it may land on any of them.
 
 ### Event contracts
 

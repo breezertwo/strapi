@@ -12,6 +12,11 @@ declare global {
         plugin_store_lab_settings: LabSettings;
         core_persisted_lab: string[];
         [key: `core_store-lab_layout:${string}`]: LabLayout;
+        core_selector_lab: number;
+        plugin_selector_lab: string;
+        plugin_store_lab_selector_lab: boolean;
+        core_shared_lab: { a: string };
+        plugin_shared_lab: { a: string; b?: number };
       }
     }
   }
@@ -89,3 +94,59 @@ strapi.store({ type: 'plugin', name: 'store_lab' }).set({ key: 'unregistered' })
 strapi.store.set({ type: 'plugin', name: 'store_lab', key: 'unregistered' });
 strapi.store.delete({ type: 'plugin', name: 'store_lab', key: 'settings' });
 strapi.store({ type: 'plugin', name: 'store_lab' }).delete({ key: 'settings' });
+
+// A `type` or `name` that is optional, a union, or may be `undefined` selects every row it can
+// build: its declared values, plus the runtime default when it may be missing or `undefined`.
+declare const optionalType: { key: 'selector_lab'; type?: 'plugin' };
+declare const optionalName: { type: 'plugin'; key: 'selector_lab'; name?: 'store_lab' };
+declare const maybeType: 'plugin' | undefined;
+declare const unionType: 'core' | 'plugin';
+declare const optionalCore: { key: 'selector_lab'; type?: 'core' };
+declare const optionalOther: { key: 'selector_lab'; type?: 'other' };
+const readOptionalType = strapi.store.get(optionalType);
+const readOptionalName = strapi.store.get(optionalName);
+const readUndefinedType = strapi.store.get({ key: 'selector_lab', type: undefined });
+const readMaybeType = strapi.store.get({ key: 'selector_lab', type: maybeType });
+const readUnionType = strapi.store.get({ key: 'selector_lab', type: unionType });
+// An optional override may be missing: the bound value stays possible.
+const readBoundOptional = strapi.store({ type: 'plugin' }).get(optionalCore);
+// A required override replaces the bound value, even `undefined`, as the runtime spread does.
+const readBoundRequired = strapi
+  .store({ type: 'plugin' })
+  .get({ key: 'selector_lab', type: 'core' });
+const readBoundUndefined = strapi
+  .store({ type: 'plugin' })
+  .get({ key: 'selector_lab', type: undefined });
+// A row without a registered value makes the whole read `unknown`.
+const readOptionalOther = strapi.store.get(optionalOther);
+declare const selectorReads: [
+  Expect<Equal<Awaited<typeof readOptionalType>, number | string | null>>,
+  Expect<Equal<Awaited<typeof readOptionalName>, string | boolean | null>>,
+  Expect<Equal<Awaited<typeof readUndefinedType>, number | null>>,
+  Expect<Equal<Awaited<typeof readMaybeType>, number | string | null>>,
+  Expect<Equal<Awaited<typeof readUnionType>, number | string | null>>,
+  Expect<Equal<Awaited<typeof readBoundOptional>, number | string | null>>,
+  Expect<Equal<Awaited<typeof readBoundRequired>, number | null>>,
+  Expect<Equal<Awaited<typeof readBoundUndefined>, number | null>>,
+  Expect<Equal<Awaited<typeof readOptionalOther>, unknown>>,
+];
+selectorReads satisfies unknown;
+
+// A write may land on any of the rows: its value must fit every registered one.
+// @ts-expect-error `plugin_selector_lab` takes a string.
+strapi.store.set({ key: 'selector_lab', type: maybeType, value: 123 });
+strapi.store.set({ key: 'selector_lab', type: maybeType, value: 'x' });
+// @ts-expect-error No value is both a number and a string.
+strapi.store.set({ key: 'selector_lab', type: unionType, value: 123 });
+// @ts-expect-error No value is both a string and a boolean.
+strapi.store.set({ ...optionalName, value: 'x' });
+strapi.store.set({ key: 'shared_lab', type: unionType, value: { a: 'x' } });
+// @ts-expect-error `core_shared_lab` takes `a`.
+strapi.store.set({ key: 'shared_lab', type: unionType, value: { b: 1 } });
+// @ts-expect-error The bound `plugin` row takes a string, the `core` override a number.
+strapi.store({ type: 'plugin' }).set({ ...optionalCore, value: 1 });
+strapi.store({ type: 'plugin' }).set({ key: 'selector_lab', type: 'core', value: 1 });
+strapi
+  .store({ type: 'plugin' })
+  // @ts-expect-error A required override replaces the bound `plugin` row.
+  .set({ key: 'selector_lab', type: 'core', value: 'x' });

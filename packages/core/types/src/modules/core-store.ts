@@ -28,6 +28,28 @@ export interface CoreStore {
   delete(params: GetParams): Promise<void>;
 }
 
+/** Whether `TParams` may lack the param `K`: it is missing or optional. */
+type IsOptionalParam<TParams, K extends PropertyKey> = K extends keyof TParams
+  ? Partial<Pick<TParams, K>> extends Pick<TParams, K>
+    ? true
+    : false
+  : true;
+
+/**
+ * The values the param `K` of `TParams` can hold at runtime: its declared values, plus `undefined`
+ * when it may be missing.
+ */
+type ParamValues<TParams, K extends PropertyKey> =
+  | (K extends keyof TParams ? TParams[K] : never)
+  | (IsOptionalParam<TParams, K> extends true ? undefined : never);
+
+/** The `type` segment of a storage key: `TDefaultType` when the type is `undefined`. */
+type TypeSegment<TType, TDefaultType extends string> = TType extends undefined
+  ? TDefaultType
+  : TType extends string
+    ? TType
+    : never;
+
 /** The `name` segment of a storage key: `_<name>`, or nothing when the name is missing or empty. */
 type NameSegment<TName> = TName extends undefined | ''
   ? ''
@@ -35,20 +57,24 @@ type NameSegment<TName> = TName extends undefined | ''
     ? `_${TName}`
     : never;
 
+/** The `key` segment of a storage key: the runtime interpolates a missing key as `'undefined'`. */
+type KeySegment<TKey> = TKey extends undefined ? 'undefined' : TKey extends string ? TKey : never;
+
 /**
- * The storage key of a core store row, built from its params as the runtime builds it:
+ * The storage keys a core store call can address, built from its params as the runtime builds them:
  * `<type>_<name>_<key>`, or `<type>_<key>` without a name (`core-store.ts` in `@strapi/core`).
  * `TDefaultType` is the type used when the params have none: `get` reads `'core'` rows, but `set`
  * and `delete` do not default it and use the row `'undefined_<…>'`.
+ * A param that is a union, optional, or may be `undefined` yields one key per value it can hold,
+ * the default included when it may be missing.
  * `environment` and `tag` are not part of the key: rows that differ only by them share a contract.
  */
-export type StorageKey<TParams, TDefaultType extends string> = TParams extends {
-  key: infer TKey extends string;
-}
-  ? `${TParams extends { type: infer TType extends string } ? TType : TDefaultType}${NameSegment<
-      TParams extends { name: infer TName } ? TName : undefined
-    >}_${TKey}`
-  : never;
+export type StorageKey<
+  TParams,
+  TDefaultType extends string,
+> = `${TypeSegment<ParamValues<TParams, 'type'>, TDefaultType>}${NameSegment<
+  ParamValues<TParams, 'name'>
+>}_${KeySegment<ParamValues<TParams, 'key'>>}`;
 
 /** Storage keys that have a registered value, including template-literal keys built at runtime. */
 export type RegisteredStoreKey = keyof Strapi.Registries.Stores;
@@ -70,18 +96,38 @@ export type StoreValue<TKey extends string> = [TKey] extends [never]
 export type StoreRead<TKey extends string> =
   unknown extends StoreValue<TKey> ? unknown : StoreValue<TKey> | null;
 
+/** One write callback per registered key of `TKey`; unregistered keys add none. */
+type RegisteredWriter<TKey extends string> = TKey extends RegisteredStoreKey
+  ? (value: Strapi.Registries.Stores[TKey & RegisteredStoreKey]) => void
+  : never;
+
 /**
- * The value a write of `TKey` takes: its registered value, or `TUnregistered`, the value param the
- * call has without strict types.
+ * The value a write of `TKey` takes: one that fits the registered value of every key it may address,
+ * or `TUnregistered`, the value param the call has without strict types, when none is registered.
+ * The intersection is required: a write that fits only one of the rows may land on another one,
+ * whose owner then reads a value that breaks its contract.
  */
-type StoreWrite<TKey extends string, TUnregistered> =
-  unknown extends StoreValue<TKey> ? TUnregistered : { value: StoreValue<TKey> };
+type StoreWrite<TKey extends string, TUnregistered> = [RegisteredWriter<TKey>] extends [never]
+  ? TUnregistered
+  : { value: RegisteredWriter<TKey> extends (value: infer TValue) => void ? TValue : never };
 
 /** Params of a core store row. */
 type StoreParams = Omit<Params, 'value'>;
 
-/** Bound params overridden by call params, as the runtime spreads them (`{ ...bound, ...params }`). */
-type MergeParams<TBound, TParams> = Omit<TBound, keyof TParams> & TParams;
+/**
+ * The values of the param `K` once call params are spread over bound ones (`{ ...bound, ...params }`):
+ * a call param replaces the bound value, even with `undefined`, unless it is optional and may be missing.
+ */
+type MergedValues<TBound, TParams, K extends PropertyKey> = K extends keyof TParams
+  ? IsOptionalParam<TParams, K> extends true
+    ? ParamValues<TBound, K> | ParamValues<TParams, K>
+    : TParams[K]
+  : ParamValues<TBound, K>;
+
+/** The params that build the storage key of a bound store call. */
+type MergeParams<TBound, TParams> = {
+  [K in 'type' | 'name' | 'key']: MergedValues<TBound, TParams, K>;
+};
 
 /**
  * A core store bound to some params, `strapi.store(params)`, with strict types enabled. Each call
