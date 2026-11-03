@@ -103,6 +103,12 @@ export type HomepageController = {
   getCountDocuments: Core.ControllerHandler;
 };
 
+/** Custom order actions. */
+export type CustomOrderController = {
+  /** `POST /collection-types/:model/:id/actions/move`: places a document before or after another. */
+  move: Core.ControllerHandler;
+};
+
 /** Preview actions: the preview URL of a document and the standalone preview script. */
 export type PreviewController = {
   getPreviewUrl: Core.ControllerHandler;

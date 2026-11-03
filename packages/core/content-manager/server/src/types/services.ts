@@ -17,6 +17,7 @@ import type { createHomepageService } from '../homepage/services/homepage';
 import type { createHistoryService } from '../history/services/history';
 import type { createLifecyclesService } from '../history/services/lifecycles';
 import type { createPreviewConfigService } from '../preview/services/preview-config';
+import type { CustomOrderService as CustomOrderImplementation } from '../custom-order/services/custom-order';
 
 type DocumentManagerImplementation = ReturnType<DocumentManagerFactory>;
 type FindLocalesOptions = Parameters<DocumentManagerImplementation['findLocales']>[2];
@@ -403,6 +404,9 @@ export type PermissionService = {
    */
   registerPermissions(): Promise<void>;
 };
+
+/** Custom order of collection type entries: settings, positions and moves. */
+export type CustomOrderService = CustomOrderImplementation;
 
 /** Homepage widgets: recent and counted documents. */
 export type HomepageService = ReturnType<typeof createHomepageService>;

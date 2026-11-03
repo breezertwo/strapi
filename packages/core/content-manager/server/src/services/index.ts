@@ -17,20 +17,22 @@ import homepage from '../homepage';
 import customOrder from '../custom-order';
 import documentMetadata from './document-metadata';
 import documentManager from './document-manager';
+import type { services as historyServices } from '../history/services';
+import type { services as previewServices } from '../preview/services';
+import type { services as customOrderServices } from '../custom-order/services';
 
 /**
- * Feature modules type their services as a loose `LoadedPlugin` map, and history only registers
- * its services when its feature is enabled: they are not checked here.
+ * Names of the services of the feature modules typed as a loose `LoadedPlugin`. Spreading such a
+ * map drops its names from the composed map's type, so they are read from the feature maps.
+ * History only registers its services when its feature is enabled.
  */
-type FeatureServiceName = 'history' | 'lifecycles' | 'preview' | 'preview-config';
+type FeatureServiceName =
+  keyof typeof historyServices | keyof typeof previewServices | keyof typeof customOrderServices;
 
-/**
- * Every registered service name has a factory. The factories keep their published develop types,
- * which the registered contracts refine, so only the names are checked here.
- */
-type RegisteredServiceNames = Exclude<
-  keyof Core.RegisteredFor<Strapi.Registries.PackageServices, 'plugin::content-manager'>,
-  FeatureServiceName
+/** Names of the registered Content Manager services. */
+type RegisteredServiceName = keyof Core.RegisteredFor<
+  Strapi.Registries.PackageServices,
+  'plugin::content-manager'
 >;
 
 const services = {
@@ -50,6 +52,15 @@ const services = {
   ...(preview.services ? preview.services : {}),
   ...(customOrder.services ? customOrder.services : {}),
   ...homepage.services,
-} satisfies Record<RegisteredServiceNames, unknown>;
+} satisfies Record<Exclude<RegisteredServiceName, FeatureServiceName>, unknown>;
+
+/** Names of the composed service map, feature services included. */
+export type ServiceMapNames = keyof typeof services | FeatureServiceName;
+
+// Every registered service name has a factory, and every factory a registered name. The factories
+// keep their published develop types, which the registered contracts refine, so only the names are
+// checked here.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+type ServiceNames = Core.Assert<Core.SameNames<ServiceMapNames, RegisteredServiceName>>;
 
 export default services;

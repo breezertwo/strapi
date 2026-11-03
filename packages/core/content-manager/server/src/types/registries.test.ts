@@ -4,6 +4,8 @@ import type { Context } from 'koa';
 import type { Core, Modules, Schema, Struct, UID } from '@strapi/types';
 import type { RelationResult } from '../../../shared/contracts/relations';
 import type { RegisteredControllers, RouteControllers } from './controllers';
+import type { ServiceMapNames } from '../services';
+import type { ControllerMapNames } from '../controllers';
 
 // Registered lookups, as applications with strict types make them.
 const getService = <TName extends string>(name: TName) =>
@@ -239,3 +241,38 @@ versions?.then((results) => results.map((version) => version.componentsSchemas))
 history?.restoreVersion('1') satisfies Promise<Modules.Documents.AnyDocument> | undefined;
 strapi.service('plugin::content-manager.lifecycles')?.bootstrap() satisfies
   Promise<void> | undefined;
+
+// Custom order is always registered: its future flag turns its behaviour off, not its services.
+const customOrder = strapi.service('plugin::content-manager.custom-order');
+customOrder.isEnabled('api::article.article') satisfies boolean;
+customOrder.applySettings('api::article.article', { customOrder: true }) satisfies Promise<void>;
+// @ts-expect-error The custom order service has no arbitrary methods.
+customOrder.missing();
+getService('custom-order').syncDocumentPosition('api::article.article', 'document');
+strapi.controller('plugin::content-manager.custom-order').move satisfies Core.ControllerHandler;
+// @ts-expect-error The custom order controller contract is hand-written: no arbitrary actions.
+strapi.controller('plugin::content-manager.custom-order').moveTo satisfies unknown;
+({
+  type: 'admin',
+  routes: [{ method: 'POST', path: '/move', handler: 'custom-order.move' }],
+}) satisfies Core.RouterInputFor<RegisteredControllers, 'plugin::content-manager'>;
+
+// The composed maps are compared by name with the registries, feature maps included.
+type RegisteredServiceNames = keyof Core.RegisteredFor<
+  Strapi.Registries.PackageServices,
+  'plugin::content-manager'
+>;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+type ServiceNames = Core.Assert<Core.SameNames<ServiceMapNames, RegisteredServiceNames>>;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+type WithoutCustomOrderService = Core.Assert<
+  // @ts-expect-error A map without its `custom-order` entry leaves a registered name unimplemented.
+  Core.SameNames<Exclude<ServiceMapNames, 'custom-order'>, RegisteredServiceNames>
+>;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+type ControllerNames = Core.Assert<Core.SameNames<ControllerMapNames, keyof RegisteredControllers>>;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+type WithoutCustomOrderController = Core.Assert<
+  // @ts-expect-error A map without its `custom-order` entry leaves a registered name unimplemented.
+  Core.SameNames<Exclude<ControllerMapNames, 'custom-order'>, keyof RegisteredControllers>
+>;

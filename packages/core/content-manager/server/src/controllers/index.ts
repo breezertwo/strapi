@@ -1,3 +1,4 @@
+import type { Core } from '@strapi/types';
 import type {} from '../types';
 import type { RegisteredControllers } from '../types/controllers';
 
@@ -12,8 +13,22 @@ import history from '../history';
 import preview from '../preview';
 import homepage from '../homepage';
 import customOrder from '../custom-order';
+import type { HistoryControllers } from '../history/controllers';
+import type { PreviewControllers } from '../preview/controllers';
+import type { HomepageControllers } from '../homepage/controllers';
+import type { CustomOrderControllers } from '../custom-order/controllers';
 
-/** Controllers of the core Content Manager routes, without the history, preview and homepage features. */
+/**
+ * Names of the feature controllers. The feature modules cast their maps to a loose `LoadedPlugin`
+ * map, whose names drop out of the spreads below, so they are read from the feature contracts.
+ */
+type FeatureControllerName =
+  | keyof HistoryControllers
+  | keyof PreviewControllers
+  | keyof HomepageControllers
+  | keyof CustomOrderControllers;
+
+/** Controllers of the core Content Manager routes, without the feature controllers. */
 const coreControllers = {
   'collection-types': collectionTypes,
   components,
@@ -22,7 +37,14 @@ const coreControllers = {
   relations,
   'single-types': singleTypes,
   uid,
-} satisfies Omit<RegisteredControllers, 'history-version' | 'homepage' | 'preview'>;
+} satisfies Omit<RegisteredControllers, FeatureControllerName>;
+
+/** Names of the composed controller map, feature controllers included. */
+export type ControllerMapNames = keyof typeof coreControllers | FeatureControllerName;
+
+// Every registered controller name has an implementation, and every implementation a registered name.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+type ControllerNames = Core.Assert<Core.SameNames<ControllerMapNames, keyof RegisteredControllers>>;
 
 export default {
   ...coreControllers,

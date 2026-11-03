@@ -31,6 +31,8 @@ declare global {
         'plugin::content-manager.content-structure': Services.ContentStructureService;
         'plugin::content-manager.content-types': Services.ContentTypesService;
         'plugin::content-manager.data-mapper': Services.DataMapperService;
+        // Always registered: the `unstableCustomOrder` future flag turns its behaviour off.
+        'plugin::content-manager.custom-order': Services.CustomOrderService;
         // Registered only when the `cms-content-history` feature is enabled: `undefined` unless
         // the application lists the feature in `licensedFeatures`, `T | undefined` in package and
         // plugin programs.
@@ -60,6 +62,8 @@ declare global {
         'plugin::content-manager.collection-types': Controllers.CollectionTypesController;
         'plugin::content-manager.components': Controllers.ComponentsController;
         'plugin::content-manager.content-types': Controllers.ContentTypesController;
+        // Always registered: the `move` action answers 404 while the future flag is off.
+        'plugin::content-manager.custom-order': Controllers.CustomOrderController;
         // Registered with the history services, under the same feature.
         'plugin::content-manager.history-version': Core.Licensed<
           'cms-content-history',
