@@ -128,7 +128,7 @@
     "p-map": "4.0.0",
     "passport-local": "1.0.0",
     "pluralize": "8.0.0",
-    "qs": "6.16.2",
+    "qs": "6.17.1",
     "react-dnd": "16.0.1",
     "react-dnd-html5-backend": "16.0.1",
     "react-intl": "6.6.2",
@@ -144,7 +144,7 @@
     "sonner": "2.0.7",
     "typescript": "5.9.3",
     "yup": "0.32.9",
-    "zod": "4.4.3"
+    "zod": "4.6.6"
   },
   "devDependencies": {
     "@strapi/admin-test-utils": "5.60.0",
