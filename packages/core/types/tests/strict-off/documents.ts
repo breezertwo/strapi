@@ -1,4 +1,5 @@
 import type { Core, Modules, Schema, Struct, UID } from '../../src';
+import type * as EngineParams from '../../src/modules/documents/params/document-engine';
 import type { Equal, Expect } from './helpers';
 
 // Document Service params keep develop's types.
@@ -20,6 +21,29 @@ declare const documentParamChecks: [
   Expect<Equal<HasParam<CoreFind['pagination'], 'total'>, false>>,
 ];
 documentParamChecks satisfies unknown;
+
+// Each method constraint is develop's engine params type. `service-instance.ts` wraps them under
+// develop's `Params.<Method>` name, so the generic declarations print develop's constraint text.
+type MethodParam<TMethod extends (...args: never[]) => unknown> = NonNullable<
+  Parameters<TMethod>[0]
+>;
+type DraftAndPublish = Modules.Documents.DraftAndPublishExtension;
+declare const methodConstraintChecks: [
+  Expect<Equal<MethodParam<Documents['findMany']>, EngineParams.FindMany<UID.ContentType>>>,
+  Expect<Equal<MethodParam<Documents['findFirst']>, EngineParams.FindFirst<UID.ContentType>>>,
+  Expect<Equal<MethodParam<Documents['findOne']>, EngineParams.FindOne<UID.ContentType>>>,
+  Expect<Equal<MethodParam<Documents['delete']>, EngineParams.Delete<UID.ContentType>>>,
+  Expect<Equal<MethodParam<Documents['create']>, EngineParams.Create<UID.ContentType>>>,
+  Expect<Equal<MethodParam<Documents['update']>, EngineParams.Update<UID.ContentType>>>,
+  Expect<Equal<MethodParam<Documents['count']>, EngineParams.Count<UID.ContentType>>>,
+  Expect<Equal<MethodParam<Documents['clone']>, EngineParams.Clone<UID.ContentType>>>,
+  Expect<Equal<MethodParam<DraftAndPublish['publish']>, EngineParams.Publish<UID.ContentType>>>,
+  Expect<Equal<MethodParam<DraftAndPublish['unpublish']>, EngineParams.Unpublish<UID.ContentType>>>,
+  Expect<
+    Equal<MethodParam<DraftAndPublish['discardDraft']>, EngineParams.DiscardDraft<UID.ContentType>>
+  >,
+];
+methodConstraintChecks satisfies unknown;
 
 // Populated attributes keep develop's `Result`: object populate keys set to `false` and `count`
 // clauses are populated keys, as on develop. Strict results drop them (`document-populate.ts` in
