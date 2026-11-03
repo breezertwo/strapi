@@ -13,6 +13,11 @@
     "title": {
       "type": "string",
       "required": true
+    },
+    "cover": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": ["images"]
     }
   }
 }

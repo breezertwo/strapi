@@ -38,6 +38,12 @@ yarn workspace strict-types run test:ts
 - `checks/contracts.ts`: type checks for the lookups, and `@ts-expect-error` cases that fail without
   the contracts. If type generation stopped registering a contract, these directives would be unused
   and `tsc` would fail.
+- `checks/common-patterns.ts`: the code typical applications write, with the modules it needs
+  (`src/index.ts`, the article `lifecycles.ts`, `src/policies/has-role.ts`,
+  `src/middlewares/response-time.ts`, `src/extensions/users-permissions/strapi-server.ts`). Lookups
+  of packages without contracts (users-permissions, third-party and local plugins) are pinned as
+  intended `unknown`. A pattern that should compile and does not yet is pinned with
+  `// @ts-expect-error GAP <unit>`, which the named unit removes.
 
 ## Where contracts live
 
