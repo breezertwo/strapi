@@ -713,19 +713,34 @@ on this checkout alone, and CI runs it after the published-contract tests. Its f
 has no `typescript.strictTypes`. The helper generates the application's types and checks that:
 
 - `types/generated/*` equals the committed copy in `tests/types/strict-off-parity/snapshot/`;
+- every type the application reaches through `@strapi/strapi` and `@strapi/types` (the probes in
+  `app/probes/surface-core.ts`, and every Strapi-declared type they reference) prints exactly as in
+  `tests/types/strict-off-parity/surface-baseline/core.txt`, which holds develop's surface;
 - the application, and the types it declares equivalent in `app/equivalence`, compile without
   errors.
+
+It also prints the types of other packages' server entries (`app/probes/surface-providers.ts`) and
+reports how they differ from `surface-baseline/providers.txt` without failing: with strict types
+off, provider types may only widen. Review that report as part of the change.
 
 When type generation output changes on purpose, for example after a rebase on a develop that
 changed the generators, or after a fixture change, refresh the copy with
 `yarn test:types:strict-off --update` and commit it with the change. Review the snapshot diff as
 part of the change: an unexplained difference means strict-off type generation moved.
 
-The snapshot does not cover the exported types themselves. `packages/core/types/tests/strict-off.ts`
-pins them with `Equal` assertions that `yarn workspace @strapi/types test:ts` compiles without
-strict mode: add one for each new type that `IsStrict` gates. The full comparison with develop,
-`node tests/types/strict-off-parity/run.cjs --baseline <develop checkout>`, also diffs every type
-an application reaches. It needs a second built checkout, so it runs by hand at each rebase.
+`surface-baseline/` is generated from the branch's merge base with develop, never from the branch
+itself. At each rebase on develop, build a checkout of the new merge base
+(`git merge-base origin/develop HEAD`) and regenerate it:
+
+```bash
+node tests/types/strict-off-parity/run.cjs --baseline <merge-base checkout> --update
+```
+
+Commit the result. `packages/core/types/tests/strict-off/*.ts` also pins the exported types with
+`Equal` assertions that `yarn workspace @strapi/types test:ts` compiles without strict mode: add one
+for each new type that `IsStrict` gates. The full comparison with develop,
+`node tests/types/strict-off-parity/run.cjs --baseline <develop checkout>`, diffs every output of
+both checkouts. It needs a second built checkout, so it runs by hand.
 
 Each package that registers contracts checks them in two places:
 

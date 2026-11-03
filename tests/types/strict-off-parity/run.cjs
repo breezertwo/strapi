@@ -7,24 +7,36 @@
 // temporary directory whose `node_modules` links to the checkout's own, then:
 //   1. `strapi ts:generate-types` runs with that checkout's CLI, and `types/generated/*` is kept;
 //   2. the application is type checked with that checkout's TypeScript, and its diagnostics are kept;
-//   3. every type exported by `app/probes/surface.ts` is printed, with every Strapi-declared type
-//      it reaches (members, signatures, union members, type arguments);
+//   3. every type exported by `app/probes/surface-core.ts` (`@strapi/strapi` and `@strapi/types`)
+//      is printed to `surface-core.txt`, with every Strapi-declared type it reaches (members,
+//      signatures, union members, type arguments). `app/probes/surface-providers.ts` (the server
+//      entries of other packages) is printed the same way to `surface-providers.txt`, without the
+//      types `surface-core.txt` already prints;
 //   4. `app/equivalence` (types that print differently but are mutually assignable) is type checked
 //      in its own program.
-// The three outputs of both checkouts are diffed. Build both checkouts first.
+// Build both checkouts first.
 //
 // Usage: node tests/types/strict-off-parity/run.cjs --baseline <checkout> [--head <checkout>]
 //          [--out <dir>] [--keep]
-// Exit code 0 when the outputs are equal, 1 when they differ. `--out` keeps both outputs and the diff.
+// The outputs of both checkouts are diffed. Exit code 0 when they are equal, 1 when they differ,
+// except for `surface-providers.txt`: provider types may only widen, so its diff is reported for
+// review and never fails. `--out` keeps both outputs and the diff.
 //
-// Snapshot mode, run by CI (`yarn test:types:strict-off`), checks the head checkout alone and skips
-// the surface: `types/generated/*` must equal the committed copy in `<dir>`, and the diagnostics and
-// equivalence programs must be empty. `--update` rewrites `<dir>` instead of comparing with it.
+// Usage: node tests/types/strict-off-parity/run.cjs --baseline <checkout> --update
+// Rewrites the committed surfaces in `surface-baseline/` from <checkout>, which must be the branch's
+// merge base with develop, built. Regenerate them at each rebase on develop.
+//
+// Snapshot mode, run by CI (`yarn test:types:strict-off`), checks the head checkout alone:
+// `types/generated/*` must equal the committed copy in `<dir>`, `surface-core.txt` must equal
+// `surface-baseline/core.txt`, and the diagnostics and equivalence programs must be empty. The diff
+// of `surface-providers.txt` with `surface-baseline/providers.txt` is printed and never fails.
+// `--update` rewrites `<dir>` instead of comparing with it, never `surface-baseline/`.
 //
 // Usage: node tests/types/strict-off-parity/run.cjs --snapshot <dir> [--update] [--head <checkout>]
 
 const assert = require('node:assert/strict');
 const childProcess = require('node:child_process');
+const crypto = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -51,9 +63,14 @@ assert.ok(
   options.baseline === undefined || options.snapshot === undefined,
   '--baseline and --snapshot cannot be combined'
 );
-assert.ok(options.update === false || options.snapshot !== undefined, '--update needs --snapshot');
-
 const UPDATE_COMMAND = 'yarn test:types:strict-off --update';
+const SURFACE_BASELINE = path.join(__dirname, 'surface-baseline');
+const SURFACE_UPDATE_COMMAND =
+  'node tests/types/strict-off-parity/run.cjs --baseline <merge-base checkout> --update';
+// Surface dump name → committed baseline file name.
+const SURFACES = { 'surface-core.txt': 'core.txt', 'surface-providers.txt': 'providers.txt' };
+// Differences in these outputs are reported, never failing.
+const INFORMATIONAL = new Set(['surface-providers.txt']);
 
 const fixture = path.join(__dirname, 'app');
 
@@ -100,19 +117,60 @@ function generateTypes(checkout, app) {
 }
 
 // Absolute paths differ between checkouts and temporary directories: print them relative to either.
-function normalizePath(text, checkout, app) {
+function pathNormalizer(checkout, app) {
   const realCheckout = fs.realpathSync(checkout);
   const realApp = fs.realpathSync(app);
 
-  return text
-    .split(realApp)
-    .join('<app>')
-    .split(app)
-    .join('<app>')
-    .split(realCheckout)
-    .join('<checkout>')
-    .split(checkout)
-    .join('<checkout>');
+  return (text) =>
+    text
+      .split(realApp)
+      .join('<app>')
+      .split(app)
+      .join('<app>')
+      .split(realCheckout)
+      .join('<checkout>')
+      .split(checkout)
+      .join('<checkout>');
+}
+
+function normalizePath(text, checkout, app) {
+  return pathNormalizer(checkout, app)(text);
+}
+
+// TypeScript prints union members in the order it created their types, which moves whenever a
+// checkout declares more types. Union members are sorted, through the TypeScript parser, so that only
+// the members themselves are compared. Text the parser rejects is kept as printed.
+function unionSorter(ts) {
+  const sortIn = (prefix, text, suffix) => {
+    const source = `${prefix}${text}${suffix}`;
+    const file = ts.createSourceFile('union.ts', source, ts.ScriptTarget.Latest, false);
+
+    if (file.parseDiagnostics.length > 0) return undefined;
+
+    const print = (node) => {
+      if (ts.isUnionTypeNode(node)) return node.types.map(print).sort().join(' | ');
+
+      let output = '';
+      let position = node.getStart(file);
+
+      ts.forEachChild(node, (child) => {
+        output += source.slice(position, child.getStart(file)) + print(child);
+        position = child.getEnd();
+      });
+
+      return output + source.slice(position, node.getEnd());
+    };
+
+    const printed = print(file.statements[0]);
+
+    return printed.slice(prefix.length, printed.length - suffix.length);
+  };
+
+  return {
+    type: (text) => sortIn('type T = ', text, ';') ?? text,
+    signature: (text) =>
+      sortIn('type T = { ', text, ' };') ?? sortIn('type T = ', text, ';') ?? text,
+  };
 }
 
 // The equivalence checks with the generated schema types they read.
@@ -153,16 +211,18 @@ function formatDiagnostics(ts, program, checkout, app) {
   return normalizePath(diagnostics.sort().join('\n'), checkout, app);
 }
 
-// Prints the probes, then every named type they reach whose declaration belongs to a Strapi package
-// (a `packages/` file of the checkout, or the generated types of the application).
-function dumpSurface(ts, program, checkout, app) {
+// Prints the probes of `probes/<probe>.ts`, then every named type they reach whose declaration
+// belongs to a Strapi package (a `packages/` file of the checkout, or the generated types of the
+// application). Types named in `exclude` are neither printed nor walked. Returns the printed text
+// and the names of the printed types.
+function dumpSurface(ts, program, checkout, app, probe, exclude = new Set()) {
   const checker = program.getTypeChecker();
   const flags = ts.TypeFormatFlags.NoTruncation | ts.TypeFormatFlags.UseFullyQualifiedType;
   const packagesDirectory = path.join(fs.realpathSync(checkout), 'packages') + path.sep;
   const appDirectory = fs.realpathSync(app) + path.sep;
-  const surface = program.getSourceFile(path.join(app, 'probes/surface.ts'));
+  const surface = program.getSourceFile(path.join(app, `probes/${probe}.ts`));
 
-  assert.ok(surface !== undefined, 'Missing probes/surface.ts in the fixture program');
+  assert.ok(surface !== undefined, `Missing probes/${probe}.ts in the fixture program`);
 
   // Members, functions and type parameters are printed inline by the type that holds them.
   const namedFlags =
@@ -174,8 +234,13 @@ function dumpSurface(ts, program, checkout, app) {
   const named = new Map();
   const queue = [];
   const visited = new Set();
+  const normalize = pathNormalizer(checkout, app);
+  const sortUnions = unionSorter(ts);
 
-  const typeToString = (type) => checker.typeToString(type, undefined, flags);
+  const typeToString = (type, extraFlags = 0) =>
+    sortUnions.type(normalize(checker.typeToString(type, undefined, flags | extraFlags)));
+  const signatureToString = (signature) =>
+    sortUnions.signature(normalize(checker.signatureToString(signature, undefined, flags)));
 
   const isStrapiDeclaration = (declaration) => {
     const fileName = fs.realpathSync(declaration.getSourceFile().fileName);
@@ -194,6 +259,49 @@ function dumpSurface(ts, program, checkout, app) {
       ? checker.getTypeArguments(type)
       : undefined;
 
+  // How a named type is printed:
+  // - `full`: its body (an alias prints what it resolves to), members, call signatures and index
+  //   signatures;
+  // - `declaration`: a generic type, as declared. The body of a generic alias is not expanded: strict
+  //   types gate inside alias bodies, and only what they resolve to must not change;
+  // - `digest`: an instantiation of a generic type, printed by name (its type arguments) and the
+  //   SHA-1 of its `full` print. Printing each instantiation in full takes hundreds of megabytes
+  //   for the document filters; `--baseline <checkout> --out <dir>` keeps the full prints of both
+  //   checkouts in `<dir>/full/{baseline,head}/`.
+  // Instantiations whose type arguments still hold type parameters (the deferred types of generic
+  // signatures) are not printed: their declaration is walked instead.
+  const genericFlags =
+    ts.TypeFlags.TypeParameter |
+    ts.TypeFlags.Conditional |
+    ts.TypeFlags.IndexedAccess |
+    ts.TypeFlags.Index |
+    ts.TypeFlags.Substitution;
+
+  const isGeneric = (type, seen = new Set()) => {
+    if (seen.has(type) === true) return false;
+    seen.add(type);
+
+    if ((type.flags & genericFlags) !== 0) return true;
+    if (type.isUnionOrIntersection() === true && type.types.some((t) => isGeneric(t, seen))) {
+      return true;
+    }
+    if (type.aliasTypeArguments?.some((t) => isGeneric(t, seen)) === true) return true;
+
+    return referenceArguments(type)?.some((t) => isGeneric(t, seen)) === true;
+  };
+
+  // Records `type` under `name`, printed in `mode`. Returns false when `name` is excluded.
+  const record = (name, type, mode) => {
+    if (exclude.has(name) === true) return false;
+
+    if (named.has(name) === false && named.size < MAX_NAMED_TYPES) {
+      named.set(name, { type, mode });
+      queue.push(type);
+    }
+
+    return true;
+  };
+
   const visit = (type) => {
     if (type === undefined || visited.has(type)) return;
     visited.add(type);
@@ -207,17 +315,26 @@ function dumpSurface(ts, program, checkout, app) {
       isStrapiDeclaration(declaration) &&
       (symbol.flags & namedFlags) !== 0
     ) {
-      // Each instantiation of a generic type is printed on its own.
       const typeArguments =
         type.aliasSymbol === undefined ? referenceArguments(type) : type.aliasTypeArguments;
-      const name =
-        typeArguments === undefined || typeArguments.length === 0
-          ? symbolName(symbol)
-          : `${symbolName(symbol)}<${typeArguments.map(typeToString).join(', ')}>`;
 
-      if (named.has(name) === false && named.size < MAX_NAMED_TYPES) {
-        named.set(name, type);
-        queue.push(type);
+      if (typeArguments === undefined || typeArguments.length === 0) {
+        if (record(symbolName(symbol), type, 'full') === false) return;
+      } else {
+        const declared = checker.getDeclaredTypeOfSymbol(symbol);
+        const parameters = (declaration.typeParameters ?? []).map((p) => p.name.text);
+        const declaredName = `${symbolName(symbol)}<${parameters.join(', ')}>`;
+
+        if (record(declaredName, declared, 'declaration') === false) return;
+
+        // The declaration itself, or a deferred instantiation, which the declaration stands for.
+        if (typeArguments.some((typeArgument) => isGeneric(typeArgument)) === true) {
+          if (type !== declared) return;
+        } else {
+          const name = `${symbolName(symbol)}<${typeArguments.map((t) => typeToString(t)).join(', ')}>`;
+
+          if (record(name, type, 'digest') === false) return;
+        }
       }
     }
 
@@ -247,8 +364,11 @@ function dumpSurface(ts, program, checkout, app) {
     }
   };
 
-  const describe = (type) => {
-    const lines = [`  = ${typeToString(type)}`];
+  const describe = (type, mode = 'full') => {
+    // `InTypeAlias` prints the body of an alias instead of its name.
+    const lines = [
+      `  = ${typeToString(type, mode === 'full' ? ts.TypeFormatFlags.InTypeAlias : 0)}`,
+    ];
 
     // Primitives and unions print fully inline, their apparent members are noise.
     const structured = (type.flags & (ts.TypeFlags.Object | ts.TypeFlags.Intersection)) !== 0;
@@ -270,7 +390,7 @@ function dumpSurface(ts, program, checkout, app) {
     }
 
     for (const signature of type.getCallSignatures()) {
-      lines.push(`  call ${checker.signatureToString(signature, undefined, flags)}`);
+      lines.push(`  call ${signatureToString(signature)}`);
     }
 
     for (const kind of [ts.IndexKind.String, ts.IndexKind.Number]) {
@@ -286,13 +406,19 @@ function dumpSurface(ts, program, checkout, app) {
   };
 
   const output = [];
+  const fullOutput = [];
+  // Symbol-keyed members print with a program-specific id (`__@iterator@162`).
+  const finish = (text) => normalize(text).replace(/(__@\w+)@\d+/g, '$1');
 
   for (const statement of surface.statements) {
     if (ts.isTypeAliasDeclaration(statement) === false) continue;
 
     const type = checker.getTypeAtLocation(statement.name);
 
-    output.push(`probe ${statement.name.text}`, ...describe(type), '');
+    const lines = describe(type);
+
+    output.push(`probe ${statement.name.text}`, ...lines, '');
+    fullOutput.push(`probe ${statement.name.text}`, ...lines, '');
     visit(type);
   }
 
@@ -301,25 +427,53 @@ function dumpSurface(ts, program, checkout, app) {
   const names = [...named.keys()].sort();
 
   for (const name of names) {
-    output.push(`type ${name}`, ...describe(named.get(name)), '');
+    const { type, mode } = named.get(name);
+
+    if (mode === 'digest') {
+      const lines = describe(type).map(finish);
+      const digest = crypto.createHash('sha1').update(lines.join('\n')).digest('hex');
+
+      output.push(`type ${name}`, `  sha1 ${digest}`, '');
+      fullOutput.push(`type ${name}`, ...lines, '');
+    } else {
+      const lines = describe(type, mode);
+
+      output.push(`type ${name}`, ...lines, '');
+      fullOutput.push(`type ${name}`, ...lines, '');
+    }
   }
 
   if (named.size >= MAX_NAMED_TYPES) output.push(`(stopped after ${MAX_NAMED_TYPES} named types)`);
 
-  // Symbol-keyed members print with a program-specific id (`__@iterator@162`).
-  return normalizePath(output.join('\n'), checkout, app).replace(/(__@\w+)@\d+/g, '$1');
+  return {
+    text: finish(output.join('\n')),
+    fullText: finish(fullOutput.join('\n')),
+    names: new Set(names),
+  };
 }
 
-function collect(checkout, label, { surface = true } = {}) {
+function dumpSurfaces(ts, program, checkout, app) {
+  const core = dumpSurface(ts, program, checkout, app, 'surface-core');
+  const providers = dumpSurface(ts, program, checkout, app, 'surface-providers', core.names);
+
+  return {
+    outputs: { 'surface-core.txt': core.text, 'surface-providers.txt': providers.text },
+    fullOutputs: { 'surface-core.txt': core.fullText, 'surface-providers.txt': providers.fullText },
+  };
+}
+
+function collect(checkout, label) {
   const { directory, app } = prepare(checkout, label);
 
   try {
     const generated = generateTypes(checkout, app);
     const ts = require(require.resolve('typescript', { paths: [checkout] }));
     const program = createProgram(ts, app);
+    const surfaces = dumpSurfaces(ts, program, checkout, app);
 
     return {
       directory,
+      fullOutputs: surfaces.fullOutputs,
       outputs: {
         ...Object.fromEntries(
           Object.entries(generated).map(([name, content]) => [`generated/${name}`, content])
@@ -331,7 +485,7 @@ function collect(checkout, label, { surface = true } = {}) {
           checkout,
           app
         ),
-        ...(surface === true ? { 'surface.txt': dumpSurface(ts, program, checkout, app) } : {}),
+        ...surfaces.outputs,
       },
     };
   } finally {
@@ -360,6 +514,38 @@ function diff(baselineDirectory, headDirectory) {
   return result.stdout;
 }
 
+// Diffs a committed baseline file with the text the head checkout printed.
+function diffFile(baselineFile, headText) {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'strict-off-parity-diff-'));
+  const headFile = path.join(directory, path.basename(baselineFile));
+
+  try {
+    fs.writeFileSync(headFile, headText);
+
+    const result = childProcess.spawnSync(
+      'diff',
+      ['-u', '--label', 'baseline', '--label', 'head', baselineFile, headFile],
+      { encoding: 'utf8', maxBuffer: 1024 * 1024 * 256 }
+    );
+
+    assert.notEqual(result.status, 2, `diff failed:\n${result.stderr}`);
+
+    return result.stdout;
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+}
+
+function writeSurfaceBaseline() {
+  const { outputs } = collect(path.resolve(options.baseline), 'baseline');
+
+  writeOutputs(
+    SURFACE_BASELINE,
+    Object.fromEntries(Object.entries(SURFACES).map(([name, file]) => [file, outputs[name]]))
+  );
+  console.log(`Updated the surface baseline in ${SURFACE_BASELINE}`);
+}
+
 function compareCheckouts() {
   const baseline = collect(path.resolve(options.baseline), 'baseline');
   const head = collect(path.resolve(options.head), 'head');
@@ -367,22 +553,33 @@ function compareCheckouts() {
 
   writeOutputs(path.join(out, 'baseline'), baseline.outputs);
   writeOutputs(path.join(out, 'head'), head.outputs);
+  writeOutputs(path.join(out, 'full/baseline'), baseline.fullOutputs);
+  writeOutputs(path.join(out, 'full/head'), head.fullOutputs);
 
   const changes = diff(path.join(out, 'baseline'), path.join(out, 'head'));
 
   fs.writeFileSync(path.join(out, 'parity.diff'), changes);
 
   const files = Object.keys({ ...baseline.outputs, ...head.outputs }).sort();
+  let broken = false;
 
   for (const file of files) {
     const equal = baseline.outputs[file] === head.outputs[file];
+    const informational = INFORMATIONAL.has(file);
 
-    console.log(`${equal ? 'same' : 'DIFF'} ${file}`);
+    if (equal === false && informational === false) broken = true;
+
+    console.log(`${equal ? 'same' : 'DIFF'} ${file}${informational ? ' (informational)' : ''}`);
   }
 
-  if (changes === '') {
-    console.log('Strict-off parity holds.');
-    if (options.out === undefined) fs.rmSync(out, { recursive: true, force: true });
+  if (broken === false) {
+    console.log(
+      changes === ''
+        ? 'Strict-off parity holds.'
+        : `Strict-off parity holds, review the provider differences in ${path.join(out, 'parity.diff')}`
+    );
+    if (options.out === undefined && changes === '')
+      fs.rmSync(out, { recursive: true, force: true });
   } else {
     console.log(`Strict-off parity broken, see ${path.join(out, 'parity.diff')}`);
     process.exitCode = 1;
@@ -391,7 +588,7 @@ function compareCheckouts() {
 
 function checkSnapshot() {
   const snapshot = path.resolve(options.snapshot);
-  const { outputs } = collect(path.resolve(options.head), 'head', { surface: false });
+  const { outputs } = collect(path.resolve(options.head), 'head');
   const generated = Object.fromEntries(
     Object.entries(outputs)
       .filter(([name]) => name.startsWith('generated/'))
@@ -425,6 +622,34 @@ function checkSnapshot() {
     }
   }
 
+  for (const [name, file] of Object.entries(SURFACES)) {
+    const baselineFile = path.join(SURFACE_BASELINE, file);
+
+    if (fs.existsSync(baselineFile) === false) {
+      failures.push(
+        `Missing surface baseline ${baselineFile}, create it with \`${SURFACE_UPDATE_COMMAND}\`.`
+      );
+      continue;
+    }
+
+    const changes = diffFile(baselineFile, outputs[name]);
+
+    if (changes === '') continue;
+
+    if (INFORMATIONAL.has(name) === true) {
+      console.log(
+        `Provider types differ from ${baselineFile} (informational, they may only widen):\n${changes}`
+      );
+    } else {
+      failures.push(
+        `The strict-off surface of @strapi/strapi and @strapi/types differs from ${baselineFile}:\n` +
+          `${changes}\nWith strict types off these types must print as on develop. If the baseline is ` +
+          `stale (the branch was rebased on develop), regenerate it from the merge base with ` +
+          `\`${SURFACE_UPDATE_COMMAND}\` and commit it.`
+      );
+    }
+  }
+
   for (const name of ['diagnostics.txt', 'equivalence.txt']) {
     if (outputs[name] !== '') {
       failures.push(
@@ -441,5 +666,6 @@ function checkSnapshot() {
   }
 }
 
-if (options.snapshot === undefined) compareCheckouts();
-else checkSnapshot();
+if (options.snapshot !== undefined) checkSnapshot();
+else if (options.update === true) writeSurfaceBaseline();
+else compareCheckouts();
