@@ -144,6 +144,9 @@ the same contracts. Follow these rules:
 Declaration emit erases these imports, so the file publishes nothing. Applications load the same
 contracts through `@strapi/strapi/strict-types` or generated types.
 
+[Decision: global type registries](./05-typescript-registries-decision.md) explains why contracts
+use the global `Strapi.Registries` interfaces and `registries.ts` files, and lists the alternatives.
+
 ## Declaring a package's contracts
 
 Keep contracts in the package that implements them, under `server/src/types/`, and declare them
