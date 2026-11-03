@@ -63,16 +63,21 @@ type RelationRequestInfo = {
   /** The `locale` query parameter; a bare `?locale` reads as `null`. */
   locale: string | null | undefined;
   /** `undefined` for a source content type without draft and publish. */
-  status: 'published' | 'draft' | undefined;
+  status: Core.IsStrict extends true ? 'published' | 'draft' | undefined : string | undefined;
   attribute: Schema.Attribute.Relation;
   fieldsToSelect: string[];
   mainField: string;
   source: { schema: Struct.ContentTypeSchema | Struct.ComponentSchema; isLocalized: boolean };
-  target: { schema: Struct.ContentTypeSchema; isLocalized: boolean };
+  target: { schema: TargetSchema; isLocalized: boolean };
   sourceSchema: Struct.ContentTypeSchema | Struct.ComponentSchema;
-  targetSchema: Struct.ContentTypeSchema;
+  targetSchema: TargetSchema;
   targetField: string;
 };
+
+/** A relation targets a content type; without strict types, as on develop, any model. */
+type TargetSchema = Core.IsStrict extends true
+  ? Struct.ContentTypeSchema
+  : Struct.ContentTypeSchema | Struct.ComponentSchema;
 
 /** Actions exposed by the Content Manager single type controller. */
 export type SingleTypesController = {

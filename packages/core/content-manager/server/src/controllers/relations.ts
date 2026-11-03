@@ -1,7 +1,7 @@
 import { property, uniq, uniqBy, concat, flow, isEmpty } from 'lodash';
 
 import { isOperatorOfType, contentTypes, relations, errors } from '@strapi/utils';
-import type { Data, Modules, UID } from '@strapi/types';
+import type { Core, Data, Modules, UID } from '@strapi/types';
 
 import { getService } from '../utils';
 import { validateFindAvailable, validateFindExisting } from './validation/relations';
@@ -130,7 +130,11 @@ const validateLocale = (sourceUid: UID.Schema, targetUid: UID.ContentType, local
 const validateStatus = (
   sourceUid: UID.Schema,
   status?: Modules.Documents.Params.PublicationStatus.Kind
-): { status: Modules.Documents.Params.PublicationStatus.Kind | undefined } => {
+): {
+  status: Core.IsStrict extends true
+    ? Modules.Documents.Params.PublicationStatus.Kind | undefined
+    : string | undefined;
+} => {
   const sourceModel = strapi.getModel(sourceUid);
 
   const isDP = contentTypes.hasDraftAndPublish;
@@ -175,8 +179,8 @@ export default {
     }
 
     const sourceUid = model;
-    // A relation targets a content type
-    const targetUid: UID.ContentType = attribute.target;
+    // A relation targets a content type; without strict types, as on develop, any model
+    const targetUid: Core.IsStrict extends true ? UID.ContentType : any = attribute.target;
 
     const { locale, isSourceLocalized, isTargetLocalized } = validateLocale(
       sourceUid,
