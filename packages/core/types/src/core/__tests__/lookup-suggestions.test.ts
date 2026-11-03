@@ -40,7 +40,11 @@ declare global {
   }
 }
 
+// A literal extends a `string` or UID pattern whether or not the union lists it: `Includes` only
+// checks that a type is accepted.
 type Includes<TUnion, TMember> = TMember extends TUnion ? true : false;
+// `Extract` keeps a literal only when the union lists it: a plain `string` or UID pattern drops it.
+type Lists<TName, TMember> = Equal<Extract<TName, TMember>, TMember>;
 
 type LabConfig = Strapi.Registries.PackageConfigs['plugin::suggest-lab'];
 
@@ -64,25 +68,23 @@ pathChecks satisfies unknown;
 
 declare const nameChecks: [
   // Full UID lookups list registered UIDs, and keep accepting every UID of the pattern.
-  Expect<Includes<ServiceLookupName, 'plugin::suggest-lab.greeting'>>,
-  Expect<Includes<ServiceLookupName, 'api::suggest-lab.greeting'>>,
+  Expect<Lists<ServiceLookupName, 'plugin::suggest-lab.greeting'>>,
+  Expect<Lists<ServiceLookupName, 'api::suggest-lab.greeting'>>,
   Expect<Includes<ServiceLookupName, UID.Service>>,
-  Expect<Includes<ControllerLookupName, 'plugin::suggest-lab.items'>>,
+  Expect<Lists<ControllerLookupName, 'plugin::suggest-lab.items'>>,
   Expect<Includes<ControllerLookupName, UID.Controller>>,
   // Typed route policies list registered names in both switch states.
-  Expect<Includes<PolicyReference, 'plugin::suggest-lab.isOwner'>>,
-  Expect<Includes<PolicyReference<'plugin::suggest-lab'>, 'isOwner'>>,
+  Expect<Lists<PolicyReference, 'plugin::suggest-lab.isOwner'>>,
+  Expect<Lists<PolicyReference<'plugin::suggest-lab'>, 'isOwner'>>,
   // Middleware lookups and typed route middlewares list registered names in both switch states.
-  Expect<Includes<MiddlewareLookupName, 'plugin::suggest-lab.timer'>>,
-  Expect<Includes<MiddlewareReference, 'plugin::suggest-lab.timer'>>,
+  Expect<Lists<MiddlewareLookupName, 'plugin::suggest-lab.timer'>>,
+  Expect<Lists<MiddlewareReference, 'plugin::suggest-lab.timer'>>,
 ];
 nameChecks satisfies unknown;
 
 // Root lookups list registered names only with strict types: without them, they print develop's
 // parameters (`tests/strict-off/lookups.ts`).
 type RootLookupName<TKey extends keyof StrapiInstance> = Parameters<StrapiInstance[TKey]>[0];
-// `Extract` keeps a literal only when the union lists it: a plain `string` or UID pattern drops it.
-type Lists<TName, TMember> = Equal<Extract<TName, TMember>, TMember>;
 declare const rootNameChecks: [
   Expect<Lists<RootLookupName<'service'>, 'plugin::suggest-lab.greeting'>>,
   Expect<Lists<RootLookupName<'controller'>, 'plugin::suggest-lab.items'>>,
