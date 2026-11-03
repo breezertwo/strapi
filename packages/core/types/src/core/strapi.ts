@@ -95,13 +95,6 @@ type StrictContainer = Omit<Container, 'get'> & {
 
 type StrapiContainer = IsStrict extends false ? Container : StrictContainer;
 
-/** License feature reads without strict mode: develop's signatures. */
-type LegacyLicenseFeatureReads = {
-  isEnabled: (feature: string) => boolean;
-  list: () => { name: string; [key: string]: any }[];
-  get: (feature: string) => string | { name: string; [key: string]: any } | undefined;
-};
-
 /**
  * License feature reads with strict types: a literal name must be a feature of the inventory, and
  * `get` returns the feature with the options of its inventory entry. A name known only at runtime
@@ -117,10 +110,6 @@ type StrictLicenseFeatureReads = {
   ) => Core.LicenseFeatureEntry<TName> | undefined;
 };
 
-type LicenseFeatureReads = IsStrict extends false
-  ? LegacyLicenseFeatureReads
-  : StrictLicenseFeatureReads;
-
 /** The limits a license feature enforces, as a feature module registers them. */
 type LicenseEntitlementInput = {
   feature: string;
@@ -135,7 +124,10 @@ type LicenseEntitlementInput = {
   }>;
 };
 
-/** License entitlements without strict mode: develop's signatures. */
+/**
+ * Develop's license entitlement signatures, which the strict entitlements extend. Without strict
+ * types, `Strapi.ee.entitlements` writes them inline so they print as on develop.
+ */
 type LegacyLicenseEntitlements = {
   register: (input: LicenseEntitlementInput) => void;
   list: () => Array<{
@@ -154,10 +146,6 @@ type StrictLicenseEntitlements = Omit<LegacyLicenseEntitlements, 'register'> & {
     input: Omit<LicenseEntitlementInput, 'feature'> & { feature: Core.LicenseFeatureLookup<TName> }
   ) => void;
 };
-
-type LicenseEntitlements = IsStrict extends false
-  ? LegacyLicenseEntitlements
-  : StrictLicenseEntitlements;
 
 export interface Strapi extends StrapiContainer, Lookups {
   server: Modules.Server.Server;
@@ -232,8 +220,40 @@ export interface Strapi extends StrapiContainer, Lookups {
     }: {
       strapi: Core.Strapi;
     }) => Promise<{ trialEndsAt: string } | null>;
-    features: LicenseFeatureReads;
-    entitlements: LicenseEntitlements;
+    // Without strict types, develop's shapes are written inline so they print as on develop.
+    features: IsStrict extends false
+      ? {
+          isEnabled: (feature: string) => boolean;
+          list: () => { name: string; [key: string]: any }[];
+          get: (feature: string) => string | { name: string; [key: string]: any } | undefined;
+        }
+      : StrictLicenseFeatureReads;
+    entitlements: IsStrict extends false
+      ? {
+          register: (input: {
+            feature: string;
+            limits: Array<{
+              key: string;
+              unit?: 'days' | 'count';
+              // Handed the feature as the license lists it (live, or a lapsed license's retained
+              // snapshot); returns the limit the feature enforces.
+              get: (
+                feature?:
+                  | string
+                  | { name: string; options?: Record<string, unknown>; [key: string]: unknown }
+              ) => unknown;
+            }>;
+          }) => void;
+          list: () => Array<{
+            feature: string;
+            limits: Array<{ key: string; unit?: 'days' | 'count'; value: number | null }>;
+          }>;
+          listRetained: () => Array<{
+            feature: string;
+            limits: Array<{ key: string; unit?: 'days' | 'count'; value: number | null }>;
+          }>;
+        }
+      : StrictLicenseEntitlements;
   };
   features: Modules.Features.FeaturesService;
   components: Schema.Components;
