@@ -146,6 +146,8 @@ export type DocumentMetadataService = Omit<
   ): Promise<{
     availableLocales: AvailableLocale[];
     availableStatus: Partial<MetadataDocumentVersion>[];
+    /** The i18n default locale for a localized content type, `null` otherwise. */
+    defaultLocale: string | null;
     versions: MetadataDocumentVersion[];
   }>;
   /**
@@ -161,6 +163,8 @@ export type DocumentMetadataService = Omit<
     meta: {
       availableLocales: AvailableLocale[];
       availableStatus: Partial<MetadataDocumentVersion>[];
+      /** The i18n default locale for a localized content type, `null` otherwise. */
+      defaultLocale: string | null;
     };
   }>;
 };

@@ -91,6 +91,12 @@ formatted satisfies Promise<{
 }>;
 // @ts-expect-error Available locales are typed, not `any`.
 formatted satisfies Promise<{ meta: { availableLocales: { locale: number }[] } }>;
+formatted.then((result) => result.meta.defaultLocale) satisfies Promise<string | null>;
+metadata
+  .getMetadata('api::article.article', { documentId: 'document' })
+  .then((result) => result.defaultLocale) satisfies Promise<string | null>;
+// @ts-expect-error The default locale is `null` for a content type that is not localized.
+formatted.then((result) => result.meta.defaultLocale) satisfies Promise<string>;
 
 const contentTypes = getService('content-types');
 contentTypes.findConfiguration({ uid: 'api::article.article' }) satisfies Promise<{
