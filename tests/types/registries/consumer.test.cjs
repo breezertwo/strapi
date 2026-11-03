@@ -1176,6 +1176,13 @@ for (const [resolution, resolutionOptions] of Object.entries(resolutions)) {
     const program = compile(['strict-empty.ts'], { types: ['@strapi/types/strict'] });
     assertClean(program, `${resolution}, strict registries without contracts`);
   });
+
+  test(`${resolution}: strict document results honour populate false, dynamic booleans and count`, () => {
+    assertClean(
+      compile(['strapi-strict.d.ts', 'document-populate.ts']),
+      `${resolution}, populated attributes of strict results`
+    );
+  });
 }
 
 // Each license scope fixture fails in every other scope, so that a gate that ignored the scope

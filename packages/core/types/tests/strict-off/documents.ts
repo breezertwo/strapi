@@ -1,4 +1,4 @@
-import type { Core, Modules, UID } from '../../src';
+import type { Core, Modules, Schema, Struct, UID } from '../../src';
 import type { Equal, Expect } from './helpers';
 
 // Document Service params keep develop's types.
@@ -20,3 +20,45 @@ declare const documentParamChecks: [
   Expect<Equal<HasParam<CoreFind['pagination'], 'total'>, false>>,
 ];
 documentParamChecks satisfies unknown;
+
+// Populated attributes keep develop's `Result`: object populate keys set to `false` and `count`
+// clauses are populated keys, as on develop. Strict results drop them (`document-populate.ts` in
+// `tests/types/registries/fixtures`).
+interface PopulateItem extends Struct.CollectionTypeSchema {
+  info: { singularName: 'populate-item'; pluralName: 'populate-items'; displayName: 'Item' };
+  attributes: {
+    title: Schema.Attribute.String;
+    tags: Schema.Attribute.Relation<'oneToMany', 'api::populate-tag.populate-tag'>;
+    cover: Schema.Attribute.Media<'images'>;
+  };
+}
+interface PopulateTag extends Struct.CollectionTypeSchema {
+  info: { singularName: 'populate-tag'; pluralName: 'populate-tags'; displayName: 'Tag' };
+  attributes: { name: Schema.Attribute.String };
+}
+declare module '../../src/public/registries' {
+  export interface ContentTypeSchemas {
+    'api::populate-item.populate-item': PopulateItem;
+    'api::populate-tag.populate-tag': PopulateTag;
+  }
+}
+
+declare const populateItems: Modules.Documents.ServiceInstance<'api::populate-item.populate-item'>;
+declare const populateFlag: boolean;
+type PopulateEntry<T> = Awaited<T> extends (infer TItem)[] ? TItem : never;
+type LegacyTags = Modules.Documents.Result<
+  'api::populate-item.populate-item',
+  { populate: 'tags' }
+>['tags'];
+const populateFalse = populateItems.findMany({ populate: { tags: false } });
+const populateDynamic = populateItems.findMany({ populate: { tags: populateFlag } });
+const populateCount = populateItems.findMany({ populate: { tags: { count: true } } });
+const populateMediaCount = populateItems.findMany({ populate: { cover: { count: true } } });
+declare const populateChecks: [
+  Expect<Equal<HasParam<PopulateEntry<typeof populateFalse>, 'tags'>, true>>,
+  Expect<Equal<PopulateEntry<typeof populateFalse>['tags'], LegacyTags>>,
+  Expect<Equal<PopulateEntry<typeof populateDynamic>['tags'], LegacyTags>>,
+  Expect<Equal<PopulateEntry<typeof populateCount>['tags'], LegacyTags>>,
+  Expect<Equal<HasParam<PopulateEntry<typeof populateMediaCount>, 'cover'>, true>>,
+];
+populateChecks satisfies unknown;

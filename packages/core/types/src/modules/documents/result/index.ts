@@ -323,19 +323,140 @@ type ScalarValue<
 type PopulatedValue<TValue> = TValue extends readonly unknown[] ? TValue : TValue | null;
 
 /**
+ * The value of a relation populated with `count: true`. The query engine counts the related entries
+ * instead of reading them, for to-one relations too, and returns `{ count: 0 }` when there is none.
+ */
+type PopulatedCount = { count: number };
+
+/**
+ * Whether `count: true` populates the count of the attribute `TName`. The query engine counts only
+ * relations stored in a join table (`applyPopulate` in `@strapi/database`). Media and `morphOne` or
+ * `morphMany` relations ignore `count` and are populated as usual.
+ */
+type IsCountable<TSchemaUID extends UID.Schema, TName extends Schema.AttributeNames<TSchemaUID>> =
+  Schema.AttributeByName<TSchemaUID, TName> extends infer TAttribute
+    ? TAttribute extends { type: 'relation'; relation: infer TRelation }
+      ? TRelation extends `morph${string}`
+        ? false
+        : TAttribute extends { useJoinTable: false }
+          ? false
+          : true
+      : false
+    : false;
+
+/**
+ * What a populate clause makes of an attribute: `'value'` for the attribute's value, `'count'` for
+ * its count. A clause whose `count` may be `true` may give the count; a clause whose `count` may be
+ * something else, or that has no `count`, may give the value.
+ */
+type PopulateClauseKinds<TClause> = TClause extends object
+  ? 'count' extends keyof TClause
+    ? | (true extends TClause['count'] ? 'count' : never)
+      | ([Exclude<TClause['count'], true>] extends [never] ? never : 'value')
+    : 'value'
+  : 'value';
+
+/**
+ * The clauses of an object notation populate, by attribute name, across the members of a union. A
+ * member that omits an attribute gives `undefined` for it.
+ */
+type ObjectPopulateClauses<TSchemaUID extends UID.Schema, TPopulate> = {
+  [
+    TName in Extract<
+      TPopulate extends unknown ? keyof TPopulate : never,
+      Schema.PopulatableAttributeNames<TSchemaUID>
+    >
+  ]: TPopulate extends unknown
+    ? TName extends keyof TPopulate
+      ? TPopulate[TName]
+      : undefined
+    : never;
+};
+
+/**
+ * The populate clause of each attribute a strict result may populate. The object notation keeps
+ * each clause: `false` (and an omitted key) populates nothing, as the runtime drops it
+ * (`convertPopulateObject` in `@strapi/utils`). The other notations populate every attribute they
+ * list, with a `true` clause.
+ */
+type StrictPopulateClauses<
+  TSchemaUID extends UID.Schema,
+  TPopulate extends Params.Populate.Any<TSchemaUID> | undefined,
+> = [TPopulate] extends [Params.Populate.ObjectNotation<TSchemaUID>]
+  ? ObjectPopulateClauses<TSchemaUID, TPopulate>
+  : { [TName in ExtractPopulate<TSchemaUID, TPopulate>]: true };
+
+/** The clauses of `TClauses` that populate their attribute: neither `false` nor omitted. */
+type PopulatingClause<TClauses, TName> = TName extends keyof TClauses
+  ? Exclude<TClauses[TName], false | undefined>
+  : never;
+
+/** The attribute names of `TClauses` that are always populated. */
+type RequiredPopulatedNames<TClauses> = {
+  [TName in keyof TClauses]: [PopulatingClause<TClauses, TName>] extends [never]
+    ? never
+    : [Extract<TClauses[TName], false | undefined>] extends [never]
+      ? TName
+      : never;
+}[keyof TClauses];
+
+/**
+ * The attribute names of `TClauses` that may be populated: a dynamic boolean, an optional key, or a
+ * key that only some members of a union populate.
+ */
+type OptionalPopulatedNames<TClauses> = {
+  [TName in keyof TClauses]: [PopulatingClause<TClauses, TName>] extends [never]
+    ? never
+    : [Extract<TClauses[TName], false | undefined>] extends [never]
+      ? never
+      : TName;
+}[keyof TClauses];
+
+/** The value of a populated attribute in a strict result, from its populate clauses. */
+type StrictPopulatedValue<
+  TSchemaUID extends UID.Schema,
+  TName extends Schema.AttributeNames<TSchemaUID>,
+  TClause,
+> = (
+  IsCountable<TSchemaUID, TName> extends true ? PopulateClauseKinds<TClause> : 'value'
+) extends infer TKinds
+  ? | ('value' extends TKinds
+        ? PopulatedValue<Schema.AttributeValueByName<TSchemaUID, TName>>
+        : never)
+    | ('count' extends TKinds ? PopulatedCount : never)
+  : never;
+
+/**
  * A strict result entry: `id` and `documentId`, every selected scalar attribute (no `?`), and every
- * populated attribute. Unselected scalars and unpopulated attributes are absent.
+ * populated attribute. Unselected scalars and unpopulated attributes are absent. An attribute that
+ * may be populated, for a dynamic boolean, is optional.
  */
 type StrictEntry<
   TSchemaUID extends UID.Schema,
   TScalars extends Schema.AttributeNames<TSchemaUID>,
-  TPopulated extends Schema.AttributeNames<TSchemaUID>,
+  TClauses,
   TStatus extends PublicationStatus,
-> = { id: Data.ID; documentId: Data.DocumentID } & {
-  -readonly [TName in TScalars | TPopulated]-?: TName extends TPopulated
-    ? PopulatedValue<Schema.AttributeValueByName<TSchemaUID, TName>>
-    : ScalarValue<TSchemaUID, TName, TStatus>;
-};
+> = [
+  Extract<RequiredPopulatedNames<TClauses>, Schema.AttributeNames<TSchemaUID>>,
+  Extract<OptionalPopulatedNames<TClauses>, Schema.AttributeNames<TSchemaUID>>,
+] extends [
+  infer TPopulated extends Schema.AttributeNames<TSchemaUID>,
+  infer TMaybePopulated extends Schema.AttributeNames<TSchemaUID>,
+]
+  ? { id: Data.ID; documentId: Data.DocumentID } & {
+      -readonly [TName in TScalars | TPopulated]-?: TName extends TPopulated
+        ? StrictPopulatedValue<TSchemaUID, TName, PopulatingClause<TClauses, TName>>
+        : ScalarValue<TSchemaUID, TName, TStatus>;
+    } & ([TMaybePopulated] extends [never]
+        ? unknown
+        : {
+            -readonly [TName in TMaybePopulated]+?: StrictPopulatedValue<
+              TSchemaUID,
+              TName,
+              PopulatingClause<TClauses, TName>
+            >;
+          })
+  : never;
 
 /**
  * The result of a Document Service or core service call with strict types, for the entries of
@@ -350,7 +471,8 @@ type StrictEntry<
  * - `publishedAt` follows draft and publish and the status of the call ({@link StatusOf} with
  *   `TDefaultStatus`, the caller's default), `locale` follows localization, dates are strings.
  * - Populated attributes are present; to-many ones are arrays. Unpopulated relations, components,
- *   dynamic zones and media are absent.
+ *   dynamic zones and media are absent, keys populated with `false` included. A key populated with a
+ *   dynamic boolean is optional. A relation populated with `count: true` is `{ count: number }`.
  *
  * Without registered schemas, any document, as {@link Result}.
  *
@@ -372,7 +494,7 @@ export type StrictResult<
       ExtractFields<TSchemaUID, ReadParams<TSchemaUID, TParams>['fields']>,
       Schema.NonPopulatableAttributeNames<TSchemaUID>
     >,
-    ExtractPopulate<TSchemaUID, ReadParams<TSchemaUID, TParams>['populate']>,
+    StrictPopulateClauses<TSchemaUID, ReadParams<TSchemaUID, TParams>['populate']>,
     StatusOf<TParams, TDefaultStatus, TUndefinedStatus>
   >,
   AnyDocument

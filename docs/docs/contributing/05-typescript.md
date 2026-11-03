@@ -466,6 +466,12 @@ types what the runtime returns, not what the schema asks for:
   types.
 - `datetime`, `date`, `time` and `timestamp` results are strings. Inputs still accept `Date`.
 - Populated to-many attributes are arrays, never `null`. Unpopulated attributes are absent.
+- With the object notation, a key set to `false` is not populated and is absent: the runtime drops
+  it. A key set to a dynamic `boolean` is optional, as is a key that only some members of a union of
+  populate objects populate. A relation populated with `{ count: true }` is `{ count: number }`, for
+  to-one relations too. Media and `morphOne` or `morphMany` relations ignore `count` and hold their
+  usual value. Nested `fields` and `populate` do not change the populated value yet: it is the
+  target's document with every attribute.
 - A populated media is the `plugin::upload.file` document, as a populated relation is its target's
   document: `Schema.Attribute.MediaValue` reads the file schema with strict types, and stays `any`
   (`any[]` for multiple media) without them. A media attribute whose plurality is unknown stays
