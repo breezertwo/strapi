@@ -4562,6 +4562,7 @@ type Database
   repair: { removeOrphanMorphType: (arg: import("<checkout>/packages/core/database/dist/repairs/operations/remove-orphan-morph-types").RemoveOrphanMorphTypeOptions) => Promise<void>; processUnidirectionalJoinTables: (arg: (db: import("<checkout>/packages/core/database/dist/index").Database, joinTableName: string, relation: any, sourceModel: any) => Promise<number>) => Promise<number>; }
   runInPhase: <T>(phase: string, fn: () => Promise<T>) => Promise<T>
   schema: import("<checkout>/packages/core/database/dist/schema/index").SchemaProvider
+  startTransaction: any
   transaction: { (): Promise<import("<checkout>/packages/core/database/dist/transaction-context").TransactionObject>; <TCallback extends Callback>(c: TCallback): Promise<ReturnType<TCallback>>; }
 
 type DatabaseConnection<TClient>
