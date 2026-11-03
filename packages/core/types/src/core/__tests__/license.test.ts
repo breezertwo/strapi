@@ -68,6 +68,13 @@ declare const featureChecks: [
       Strapi.Registries.LicenseFeatures['review-workflows'] | undefined
     >
   >,
+  // `features.get` reads a plain decimal string option as its number and keeps any other value.
+  Core.Assert<
+    Equal<
+      NonNullable<NonNullable<typeof workflows>['options']>['numberOfWorkflows'],
+      number | string | undefined
+    >
+  >,
   Core.Assert<Equal<NonNullable<typeof workflows>['name'], 'review-workflows'>>,
   Core.Assert<Equal<NonNullable<typeof runtimeFeature>['name'], string>>,
   Core.Assert<

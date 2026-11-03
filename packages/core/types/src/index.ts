@@ -55,9 +55,11 @@ declare global {
 
       /**
        * The license features Strapi gates code on, keyed by the name a license lists. Each value is
-       * the `options` object the feature's license entry may carry, typed from the readers of each
-       * option. The license registry ships some numeric limits as numeric strings
-       * (`core/src/ee/entitlements.ts:48-50`).
+       * the `options` object the feature's license entry may carry, as `strapi.ee.features.get`
+       * returns it. License options are untyped JSON, and the registry has shipped some numeric
+       * limits as strings: `get` and `list` read a plain finite decimal string as its number and
+       * return any other value as is (`parseNumericString` in `core/src/ee/entitlements.ts`). No
+       * schema rules out another string (e.g. `'1e3'`), so a numeric option is `number | string`.
        *
        * `Core.Licensed` gates and `typescript.licensedFeatures` accept these names. Strapi declares
        * the whole inventory here, so that every package checks its gates against the same names.
@@ -74,22 +76,22 @@ declare global {
            * Maximum retention, in days, that `admin.auditLogs.retentionDays` can lower. `null`, the
            * default of gold licenses, sets no maximum: 90 days unless configured.
            */
-          retentionDays?: number | `${number}` | null;
+          retentionDays?: number | string | null;
         };
         /** Review workflows services and controllers (`@strapi/review-workflows`). */
         'review-workflows': {
-          numberOfWorkflows?: number | `${number}`;
-          stagesPerWorkflow?: number | `${number}`;
+          numberOfWorkflows?: number | string;
+          stagesPerWorkflow?: number | string;
         };
         /** Content releases services and controllers (`@strapi/content-releases`). */
         'cms-content-releases': {
           /** Maximum number of pending releases, 3 when unset. */
-          maximumReleases?: number | `${number}`;
+          maximumReleases?: number | string;
         };
         /** Content history services and controller (`@strapi/content-manager`). */
         'cms-content-history': {
           /** Maximum retention, in days, that `admin.history.retentionDays` can lower. */
-          retentionDays?: number | `${number}`;
+          retentionDays?: number | string;
         };
         /** Advanced preview in the content manager admin panel; it gates no server contract. */
         'cms-advanced-preview': Record<string, unknown>;
@@ -126,7 +128,9 @@ declare global {
       /**
        * Application service contracts and overrides, keyed by full service UID.
        * Each entry replaces the entire package contract for that UID; it is not intersected with it.
-       * Services absent from both registries retain their existing permissive types.
+       * Without strict types, and in dictionary access (`strapi.services[uid]`), services absent
+       * from both registries keep their permissive types; strict function lookups resolve them to
+       * `unknown`.
        *
        * Not to be confused with the legacy `Public.Services`, which lists service UIDs
        * and narrows `UID.Service` when augmented.
@@ -155,7 +159,8 @@ declare global {
       /**
        * Application configuration contracts and overrides, keyed by config namespace.
        * Each entry replaces the entire package contract for that namespace; it is not intersected with it.
-       * Namespaces absent from both registries retain their existing permissive types.
+       * Without strict types, namespaces absent from both registries keep their permissive types;
+       * strict lookups (`strapi.config.get`, `plugin.config`) resolve them to `unknown`.
        */
       // eslint-disable-next-line @typescript-eslint/no-empty-interface
       interface AppConfigs {}
@@ -171,7 +176,9 @@ declare global {
       /**
        * Application controller contracts and overrides, keyed by full controller UID.
        * Each entry replaces the entire package contract for that UID; it is not intersected with it.
-       * Controllers absent from both registries retain their existing permissive types.
+       * Without strict types, and in dictionary access (`strapi.controllers[uid]`), controllers
+       * absent from both registries keep their permissive types; strict function lookups resolve
+       * them to `unknown`.
        *
        * Not to be confused with the legacy `Public.Controllers`, which lists controller UIDs
        * and narrows `UID.Controller` when augmented.
@@ -298,10 +305,11 @@ declare global {
        *
        * At runtime, the second registration of an ID throws at boot, and the second registrant may
        * be the owner: an application that registers a plugin's ID in its `register` makes the
-       * plugin's `bootstrap` throw. Register actions in an application's `register` or a plugin's
-       * `bootstrap`, not in an application's `bootstrap`, which runs after the admin removes the
-       * permissions of unregistered actions. The IDs of content releases, review workflows, SSO and
-       * audit logs exist only when their feature is enabled.
+       * plugin's `bootstrap` throw. Register actions in an application's `register`, a plugin's
+       * `bootstrap` or an application's `bootstrap`: the admin accepts registrations until the
+       * `strapi::app.afterBootstrap` hook, where it locks the provider and removes the permissions
+       * of unregistered actions. The IDs of content releases, review workflows, SSO and audit logs
+       * exist only when their feature is enabled.
        *
        * With strict types enabled, once any ID is declared, typed permission checks accept declared
        * IDs only (see `Core.PermissionActionReference`).
