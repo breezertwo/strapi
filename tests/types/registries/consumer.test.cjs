@@ -647,6 +647,13 @@ for (const [resolution, resolutionOptions] of Object.entries(resolutions)) {
     );
   });
 
+  test(`${resolution}: users-permissions registers the middleware its routes name`, () => {
+    assertClean(
+      compile(['strapi-strict.d.ts', 'users-permissions-middleware.ts']),
+      `${resolution}, users-permissions middleware`
+    );
+  });
+
   test(`${resolution}: relative policy names preserve registered config contracts`, () => {
     assertClean(
       compile(['strapi-strict.d.ts', 'policy-namespaces.ts']),
