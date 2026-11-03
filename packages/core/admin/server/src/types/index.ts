@@ -327,10 +327,12 @@ declare global {
         'admin::ai': Controllers['ai'];
         'admin::api-token': Controllers['api-token'];
         /**
-         * Added by the EE edition when the license that verifies at boot lists `audit-logs`. Also
-         * absent when `admin.auditLogs.enabled` is `false`, which the types do not model.
+         * Added by the EE edition when the license that verifies at boot lists `audit-logs` and
+         * `admin.auditLogs.enabled` is not `false` (`isAuditLogsEnabled`). The types cannot read
+         * the option, so the controller stays possibly `undefined` when the application lists the
+         * feature.
          */
-        'admin::audit-logs': Core.Licensed<'audit-logs', EEControllers['audit-logs']>;
+        'admin::audit-logs': Core.Licensed<'audit-logs', EEControllers['audit-logs'] | undefined>;
         'admin::authenticated-session': Controllers['authenticated-session'];
         'admin::authenticated-user': Controllers['authenticated-user'];
         'admin::authentication': Core.LicensedExtension<

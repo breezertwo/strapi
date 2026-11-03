@@ -27,12 +27,14 @@ declare const checks: [
 ];
 checks satisfies unknown;
 
-// The audit logs controller exists, and CE controllers have the actions the EE edition adds.
+// The audit logs controller has its contract but may be missing: admin also needs
+// `admin.auditLogs.enabled` (`licensed-audit-logs-disabled.ts`). CE controllers have the actions
+// the EE edition adds.
 declare const adminControllerChecks: [
-  Core.Assert<Equal<HasUndefined<Core.ControllerFor<'admin::audit-logs'>>, false>>,
+  Core.Assert<HasUndefined<Core.ControllerFor<'admin::audit-logs'>>>,
   Core.Assert<
     Equal<
-      keyof Core.ControllerFor<'admin::audit-logs'>,
+      keyof NonNullable<Core.ControllerFor<'admin::audit-logs'>>,
       'findMany' | 'findManyUsers' | 'findOne' | 'export'
     >
   >,
@@ -46,6 +48,6 @@ declare const adminControllerChecks: [
 ];
 adminControllerChecks satisfies unknown;
 
-void app.controller('admin::audit-logs').findMany.call;
+void app.controller('admin::audit-logs')?.findMany.call;
 // @ts-expect-error The feature is not listed: the contract is `undefined`.
 void app.service('plugin::licensed-provider.reports').count();

@@ -546,6 +546,21 @@ for (const [resolution, resolutionOptions] of Object.entries(resolutions)) {
     );
   });
 
+  // Admin registers the audit logs controller only when `admin.auditLogs.enabled` is also on, so a
+  // listed `audit-logs` feature keeps it possibly missing.
+  test(`${resolution}: a listed audit-logs feature keeps the audit logs controller optional`, async () => {
+    const scope = licenseScopes.find(({ fixture: name }) => name === 'licensed-audit-logs.ts');
+    const appDir = fs.mkdtempSync(path.join(__dirname, '.generated-'));
+    try {
+      assertClean(
+        compile([...(await licenseScopeFiles(appDir, scope)), 'licensed-audit-logs-disabled.ts']),
+        `${resolution}, license scope ${scope.scope}, audit logs disabled by configuration`
+      );
+    } finally {
+      fs.rmSync(appDir, { recursive: true, force: true });
+    }
+  });
+
   for (const provider of [
     'i18n',
     'content-manager',

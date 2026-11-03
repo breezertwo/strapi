@@ -593,10 +593,10 @@ types.
   `?.` and `if` checks narrow it to `never`: the types say the contract never exists in this
   application. List the feature in `licensedFeatures` when the application runs with it, or remove
   the code.
-- The audit logs controller, `admin::audit-logs`, is `Core.Licensed<'audit-logs', Contract>`.
-  Admin also leaves it out when `admin.auditLogs.enabled` is `false`, which the types do not model:
-  an application that lists `audit-logs` and sets the option to `false` gets `undefined` at
-  runtime.
+- The audit logs controller, `admin::audit-logs`, is
+  `Core.Licensed<'audit-logs', Contract | undefined>`: admin also leaves it out when
+  `admin.auditLogs.enabled` is `false`, so it stays possibly `undefined` in an application that
+  lists `audit-logs`, and code checks it before calling it.
 - With strict types, `strapi.ee.features.isEnabled` and `get`, and the `feature` of
   `strapi.ee.entitlements.register`, accept a runtime `string` but reject a literal name that is not
   in the inventory. `get` types the options of an inventory feature and returns no `string`.
