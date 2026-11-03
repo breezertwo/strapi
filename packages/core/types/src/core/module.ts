@@ -9,6 +9,13 @@ import type {
 } from './middleware';
 import type { PolicyConfigFor, RegisteredPolicyName } from './policy';
 import type { RegisteredServiceUID, ServiceFor } from './service';
+import type {
+  ConfigDefaultValue,
+  ConfigFor,
+  ConfigNamespace,
+  ConfigPathLookup,
+  ConfigPathSuggestion,
+} from './strapi';
 import type { SuggestedString } from '../utils/string';
 import type { IsDynamicName, IsStrict, RegisteredRecord } from './strictness';
 
@@ -255,17 +262,88 @@ type ModuleLookups<TNamespace extends string> = IsStrict extends false
   ? LegacyModuleLookups
   : StrictModuleLookups<TNamespace>;
 
+/** The module's registered config namespace, e.g. `api::article`, or `never` without a contract. */
+type ModuleConfigNamespace<TNamespace extends string> =
+  IsDynamicName<TNamespace> extends true ? never : Extract<TNamespace, ConfigNamespace>;
+
+/** Top-level keys of the module's registered config contract, listed for completion. */
+type ModuleConfigKey<TNamespace extends string> = [ModuleConfigNamespace<TNamespace>] extends [
+  never,
+]
+  ? never
+  : keyof ConfigFor<ModuleConfigNamespace<TNamespace>> & string;
+
+/** Any module config key. Top-level keys of the registered contract are listed for completion. */
+type ModuleConfigPath<TNamespace extends string> =
+  SuggestedString<ModuleConfigKey<TNamespace>> | Exclude<PropertyPath, string>;
+
+/** Completion candidates for a partially typed dotted path of the module's config contract. */
+type ModuleConfigPathSuggestion<TNamespace extends string, TKey> = [
+  ModuleConfigNamespace<TNamespace>,
+] extends [never]
+  ? never
+  : ConfigPathSuggestion<ConfigFor<ModuleConfigNamespace<TNamespace>>, TKey>;
+
+/** The registered value when `TKey` is a key or dotted path of the module's config contract, `T` otherwise. */
+type ModuleConfigLookup<TNamespace extends string, TKey, T, TDefault = undefined> = [
+  ModuleConfigNamespace<TNamespace>,
+] extends [never]
+  ? T
+  : ModuleConfigPath<TNamespace> extends TKey
+    ? T
+    : TKey extends string
+      ? ConfigPathLookup<ModuleConfigNamespace<TNamespace>, TKey, T, TDefault>
+      : T;
+
+/** Any key when the module has no registered config contract, `never` otherwise. */
+type LegacyModuleConfigPath<TNamespace extends string> = [
+  ModuleConfigNamespace<TNamespace>,
+] extends [never]
+  ? PropertyPath
+  : never;
+
+type LegacyModuleConfigGetter = {
+  config<T = unknown>(key: PropertyPath, defaultVal?: T): T; // TODO: this mirrors ConfigProvider.get, we should use it directly
+};
+
+/** `config` with strict mode, like a plugin's `config`. */
+type StrictModuleConfigGetter<TNamespace extends string> = {
+  /** Reads the config of a module without a registered contract, as without strict mode. */
+  config<T = unknown>(key: LegacyModuleConfigPath<TNamespace>, defaultVal?: T): NoInfer<T>;
+  /**
+   * Reads a key or dotted path of the module config, registered under the module namespace (e.g.
+   * `AppConfigs['api::article']`). A registered contract resolves the value type; otherwise the
+   * result is `unknown`, or the explicit type argument (`config<number>('limit')`).
+   * Editors list its top-level keys, then the keys under the path being typed.
+   *
+   * A defined default replaces `undefined` in the result; `null` values are preserved.
+   */
+  config<
+    T = unknown,
+    TKey extends ModuleConfigPath<TNamespace> = ModuleConfigPath<TNamespace>,
+    TArgs extends [] | [ConfigDefaultValue] =
+      [] | [ModuleConfigLookup<TNamespace, TKey, T> | undefined],
+  >(
+    key: TKey | ModuleConfigPathSuggestion<TNamespace, TKey>,
+    ...args: TArgs & ([] | [defaultVal: ModuleConfigLookup<TNamespace, TKey, T> | undefined])
+  ): ModuleConfigLookup<TNamespace, TKey, NoInfer<T>, NoInfer<TArgs[0]>>;
+};
+
+type ModuleConfigGetter<TNamespace extends string> = IsStrict extends false
+  ? LegacyModuleConfigGetter
+  : StrictModuleConfigGetter<TNamespace>;
+
 /**
  * A loaded module. `TNamespace` is its runtime namespace, e.g. `plugin::i18n` or `api::article`:
  * with strict types enabled, a literal namespace types the `services`, `controllers`, `policies` and
- * `middlewares` maps from the registries, and the `service`, `controller`, `policy` and `middleware`
- * lookups of API modules.
+ * `middlewares` maps from the registries, the `service`, `controller`, `policy` and `middleware`
+ * lookups of API modules, and `config` from the config registries.
  */
-export interface Module<TNamespace extends string = string> extends ModuleLookups<TNamespace> {
+export interface Module<TNamespace extends string = string>
+  extends ModuleLookups<TNamespace>, ModuleConfigGetter<TNamespace> {
   bootstrap: ({ strapi }: { strapi: Strapi }) => void | Promise<void>;
   destroy: ({ strapi }: { strapi: Strapi }) => void | Promise<void>;
   register: ({ strapi }: { strapi: Strapi }) => void | Promise<void>;
-  config<T = unknown>(key: PropertyPath, defaultVal?: T): T; // TODO: this mirrors ConfigProvider.get, we should use it directly
   routes: Record<string, Router>;
   controllers: ModuleControllerMap<TNamespace>;
   services: ModuleServiceMap<TNamespace>;

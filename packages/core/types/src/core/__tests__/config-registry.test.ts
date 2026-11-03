@@ -14,6 +14,8 @@ declare global {
     namespace Registries {
       interface PackageConfigs {
         'plugin::config-lab': { enabled: string; defaultOnly: true };
+        'api::config-lab': { enabled: string; defaultOnly: true };
+        'api::config-lab-nested': { provider: { name: string; options?: { port: number } } };
         'plugin::config-lab-default': LabConfig;
         'plugin::config-lab-nested': {
           provider: { name: string; options?: { port: number } | null };
@@ -25,6 +27,7 @@ declare global {
 
       interface AppConfigs {
         'plugin::config-lab': LabConfig;
+        'api::config-lab': LabConfig;
       }
     }
   }
@@ -33,6 +36,7 @@ declare global {
 declare const strapi: StrapiInstance;
 declare const dynamicPlugin: string;
 declare const dynamicKey: string;
+declare const dynamicApi: string;
 // Results are assigned before `satisfies` so that the asserted type cannot be inferred from context.
 
 // Full namespace lookups resolve the registered contract.
@@ -316,3 +320,41 @@ previewParams.status satisfies 'draft' | 'published' | undefined;
 // @ts-expect-error Other status strings are rejected by the preview URL validation.
 const otherPreviewStatus: typeof previewParams.status = 'modified';
 otherPreviewStatus satisfies unknown;
+
+// API modules read `api::<name>` config, like `strapi.config.get('api::<name>')`.
+const apiLimit = strapi.api('config-lab').config('limit');
+const apiLimitWithDefault = strapi.api('config-lab').config('limit', 10);
+const apiNestedName = strapi.api('config-lab-nested').config('provider.name');
+const apiOptionalPort = strapi.api('config-lab-nested').config('provider.options.port');
+const apiOptionalPortWithDefault = strapi
+  .api('config-lab-nested')
+  .config('provider.options.port', 1337);
+const apiUnknownKey = strapi.api('config-lab').config('unknown');
+const apiExplicit = strapi.api('config-lab').config<string>('unregistered');
+const apiUnregistered = strapi.api('unregistered').config('limit');
+const apiUnregisteredExplicit = strapi.api('unregistered').config<number>('limit');
+const apiUnregisteredDefault = strapi.api('unregistered').config('label', 'fallback');
+const apiDynamic = strapi.api(dynamicApi).config<number>(dynamicKey);
+const apiArrayPath = strapi.api('config-lab').config<number>(['limit']);
+declare const anyModule: Core.Module;
+const anyModuleConfig = anyModule.config<number>('limit');
+declare const moduleConfigChecks: [
+  Expect<Equal<typeof apiLimit, number>>,
+  Expect<Equal<typeof apiLimitWithDefault, number>>,
+  Expect<Equal<typeof apiNestedName, string>>,
+  Expect<Equal<typeof apiOptionalPort, number | undefined>>,
+  Expect<Equal<typeof apiOptionalPortWithDefault, number>>,
+  Expect<Equal<typeof apiUnknownKey, unknown>>,
+  Expect<Equal<typeof apiExplicit, string>>,
+  Expect<Equal<typeof apiUnregistered, unknown>>,
+  Expect<Equal<typeof apiUnregisteredExplicit, number>>,
+  Expect<Equal<typeof apiUnregisteredDefault, string>>,
+  Expect<Equal<typeof apiDynamic, number>>,
+  Expect<Equal<typeof apiArrayPath, number>>,
+  Expect<Equal<typeof anyModuleConfig, number>>,
+];
+moduleConfigChecks satisfies unknown;
+// @ts-expect-error API default values must match the registered value type.
+strapi.api('config-lab').config('limit', 'ten');
+// @ts-expect-error The application contract replaces the package one for API modules too.
+strapi.api('config-lab').config('defaultOnly') satisfies true;

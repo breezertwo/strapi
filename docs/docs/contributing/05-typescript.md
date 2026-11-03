@@ -214,6 +214,9 @@ A config namespace has two types:
 The JSDoc of each type links to the other. `@strapi/core` keeps one file per core namespace in
 `packages/core/core/src/types/config/` and registers them in `packages/core/core/src/types/index.ts`.
 
+With strict types, `strapi.api(name).config(key)` reads the contract registered under `api::<name>`,
+as `strapi.plugin(name).config(key)` reads `plugin::<name>`; without one it returns `unknown`.
+
 ### Policy and middleware contracts
 
 `PackagePolicies` and `PackageMiddlewares` map a full UID to the config the policy or middleware
