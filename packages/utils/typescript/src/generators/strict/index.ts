@@ -28,6 +28,62 @@ const readLicensedFeatures = (strapi: GeneratorOptions['strapi']): string[] => {
 };
 
 /**
+ * The license gates of the license that verified at boot: `'licensed'` and its features, none in CE.
+ * Reads `strapi.ee` as the runtime does. `undefined` when the instance has no `strapi.ee`.
+ */
+const readBootLicenseGates = (strapi: GeneratorOptions['strapi']): Set<string> | undefined => {
+  if (strapi.ee === undefined) {
+    return undefined;
+  }
+
+  if (strapi.ee.isEE !== true) {
+    return new Set();
+  }
+
+  const features: Array<{ name: string }> = strapi.ee.features.list();
+
+  return new Set(['licensed', ...features.map((feature) => feature.name)]);
+};
+
+/**
+ * Warns when `typescript.licensedFeatures` and the license that verified at boot disagree: the
+ * generated types follow the config, the registered contracts follow the license. Never changes the
+ * output nor fails the generation.
+ */
+const warnOnLicenseMismatch = (
+  strapi: GeneratorOptions['strapi'],
+  logger: GeneratorOptions['logger'],
+  licensedFeatures: string[]
+) => {
+  const bootGates = readBootLicenseGates(strapi);
+
+  if (bootGates === undefined) {
+    return;
+  }
+
+  // Every listed feature implies `'licensed'`
+  const declaredGates = new Set(licensedFeatures);
+  if (licensedFeatures.length > 0) {
+    declaredGates.add('licensed');
+  }
+
+  const undeclared = [...bootGates].filter((gate) => declaredGates.has(gate) === false);
+  const unlicensed = licensedFeatures.filter((gate) => bootGates.has(gate) === false);
+
+  if (undeclared.length > 0) {
+    logger.warn(
+      `The license Strapi booted with includes license features that config.typescript.licensedFeatures does not list: ${undeclared.join(', ')}. Their license-gated contracts are typed as \`undefined\`. Add them to config.typescript.licensedFeatures.`
+    );
+  }
+
+  if (unlicensed.length > 0) {
+    logger.warn(
+      `config.typescript.licensedFeatures lists license features that the license Strapi booted with does not include: ${unlicensed.join(', ')}. Their license-gated contracts are typed as registered but are \`undefined\` at runtime.`
+    );
+  }
+};
+
+/**
  * The application's license scope: `Settings.licenses: 'declared'` and the listed gates, so that
  * license-gated contracts (`Core.Licensed`) follow `typescript.licensedFeatures` rather than the
  * license type generation runs with.
@@ -68,10 +124,16 @@ declare global {
  *
  * The file also declares the application's license scope. Only type generation writes it: a
  * published entry point, `@strapi/strapi/strict-types` included, would apply it to every program
- * that loads it, plugins included.
+ * that loads it, plugins included. The scope follows the config; a license that disagrees only logs
+ * warnings.
  */
-export const generateStrictDefinitions = async (options: Pick<GeneratorOptions, 'strapi'>) => {
-  const output = `${STRICT_OPT_IN}${licenseScope(readLicensedFeatures(options.strapi))}`;
+export const generateStrictDefinitions = async (
+  options: Pick<GeneratorOptions, 'strapi' | 'logger'>
+) => {
+  const licensedFeatures = readLicensedFeatures(options.strapi);
+  warnOnLicenseMismatch(options.strapi, options.logger, licensedFeatures);
+
+  const output = `${STRICT_OPT_IN}${licenseScope(licensedFeatures)}`;
 
   return { output, stats: {} };
 };
