@@ -1,11 +1,9 @@
 import type * as Core from '..';
+import type { Equal } from '../../../tests/helpers/assert';
 
 type ReportsService = { count(): number };
 type CEUsersService = { create(): string; list(): string[] };
 type EEUsersService = { create(): number; isSSOLocked(): boolean };
-
-type Equal<T, U> =
-  (<V>() => V extends T ? 1 : 2) extends <V>() => V extends U ? 1 : 2 ? true : false;
 
 type Users = Core.LicensedExtension<CEUsersService, EEUsersService>;
 

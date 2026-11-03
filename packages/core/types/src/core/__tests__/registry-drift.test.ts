@@ -1,4 +1,5 @@
 import type * as Core from '..';
+import type { Equal } from '../../../tests/helpers/assert';
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -14,9 +15,6 @@ declare global {
     }
   }
 }
-
-type Equal<T, U> =
-  (<V>() => V extends T ? 1 : 2) extends <V>() => V extends U ? 1 : 2 ? true : false;
 
 type Registered = Core.RegisteredFor<Strapi.Registries.PackageServices, 'plugin::drift-lab'>;
 

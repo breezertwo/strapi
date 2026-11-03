@@ -1,7 +1,5 @@
 import type { AuthenticationService } from '../auth';
-
-type Equal<T, U> =
-  (<V>() => V extends T ? 1 : 2) extends <V>() => V extends U ? 1 : 2 ? true : false;
+import type { Equal } from '../../../tests/helpers/assert';
 
 declare const auth: AuthenticationService;
 declare const info: Parameters<AuthenticationService['verify']>[0];

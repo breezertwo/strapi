@@ -2,6 +2,7 @@ import type * as Internal from '../../internal';
 import type * as Struct from '../../struct';
 import type * as UID from '../../uid';
 import type { Component, ContentType } from '..';
+import type { Equal, Expect } from '../../../tests/helpers/assert';
 
 // Strict mode reads only the global schema registries. Public entries must not narrow anything.
 declare module '../../public/registries' {
@@ -12,10 +13,6 @@ declare module '../../public/registries' {
     'ignored.ignored': Struct.ComponentSchema;
   }
 }
-
-type Equal<T, U> =
-  (<V>() => V extends T ? 1 : 2) extends <V>() => V extends U ? 1 : 2 ? true : false;
-type Expect<T extends true> = T;
 
 // Without generated schemas, strict mode keeps the generic UIDs and schemas, as without strict mode.
 declare const emptyChecks: [

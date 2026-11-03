@@ -4,11 +4,9 @@ import type * as Data from '../../../data';
 import type * as Documents from '../../../modules/documents';
 import type * as EntityService from '../../../modules/entity-service';
 import type * as Attribute from '..';
+import type { Equal, Expect as Assert } from '../../../../tests/helpers/assert';
 
 type IsAny<T> = 0 extends 1 & T ? true : false;
-type Assert<T extends true> = T;
-type Equal<T, U> =
-  (<V>() => V extends T ? 1 : 2) extends <V>() => V extends U ? 1 : 2 ? true : false;
 
 // Values are upload file documents, as a relation's value is its target's document. A generic
 // media attribute, whose plurality is unknown, stays `any`.

@@ -5,6 +5,7 @@ import type { Policy, PolicyContext, PolicyHandler } from '../policy';
 import type { RouteConfigFor, RouteInput } from '../route';
 import type { RouterInputFor } from '../router';
 import type { Strapi as StrapiInstance } from '../strapi';
+import type { Equal, Expect } from '../../../tests/helpers/assert';
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -168,10 +169,6 @@ type LabRouter = RouterInputFor<typeof controllers>;
   // @ts-expect-error An alias cannot supply the config of a shadowed relative policy.
   policies: [{ name: 'policyLabCollision', config: { relative: true } }],
 }) satisfies RouteConfigFor<'plugin::policy-lab'>;
-
-type Equal<T, U> =
-  (<V>() => V extends T ? 1 : 2) extends <V>() => V extends U ? 1 : 2 ? true : false;
-type Expect<T extends true> = T;
 
 declare const strapi: StrapiInstance;
 declare const dynamicName: string;

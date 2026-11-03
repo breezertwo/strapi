@@ -6,6 +6,7 @@ import type { Plugin } from '../plugin';
 import type { RouteConfigFor, RouteInput } from '../route';
 import type { RouterInputFor } from '../router';
 import type { Strapi as StrapiInstance } from '../strapi';
+import type { Equal, Expect } from '../../../tests/helpers/assert';
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -99,10 +100,6 @@ declare const inline: MiddlewareHandler;
   handler: 'items.list',
   config: { middlewares: ['global::unregistered', inline] },
 }) satisfies RouteInput;
-
-type Equal<T, U> =
-  (<V>() => V extends T ? 1 : 2) extends <V>() => V extends U ? 1 : 2 ? true : false;
-type Expect<T extends true> = T;
 
 declare const strapi: StrapiInstance;
 declare const dynamicName: string;

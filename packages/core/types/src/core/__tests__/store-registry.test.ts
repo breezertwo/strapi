@@ -1,4 +1,5 @@
 import type { Strapi as StrapiInstance } from '../strapi';
+import type { Equal, Expect } from '../../../tests/helpers/assert';
 
 type LabSettings = { enabled: boolean; label?: string };
 type LabLayout = { widgets: string[] };
@@ -21,10 +22,6 @@ declare global {
     }
   }
 }
-
-type Equal<T, U> =
-  (<V>() => V extends T ? 1 : 2) extends <V>() => V extends U ? 1 : 2 ? true : false;
-type Expect<T extends true> = T;
 
 declare const strapi: StrapiInstance;
 declare const dynamicKey: string;

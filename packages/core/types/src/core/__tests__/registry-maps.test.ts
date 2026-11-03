@@ -4,6 +4,7 @@ import type { Plugin, PluginOf, RegisteredPluginName } from '../plugin';
 import type { Policy, PolicyContext } from '../policy';
 import type { Service } from '../service';
 import type { Strapi as StrapiInstance } from '../strapi';
+import type { Equal, Expect } from '../../../tests/helpers/assert';
 
 type LabService = { greet(name: string): Promise<string> };
 type LabController = { list: ControllerHandler };
@@ -39,10 +40,6 @@ declare global {
     }
   }
 }
-
-type Equal<T, U> =
-  (<V>() => V extends T ? 1 : 2) extends <V>() => V extends U ? 1 : 2 ? true : false;
-type Expect<T extends true> = T;
 
 declare const strapi: StrapiInstance;
 declare const dynamicKey: string;

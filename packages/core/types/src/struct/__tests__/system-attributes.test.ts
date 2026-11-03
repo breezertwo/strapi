@@ -1,9 +1,6 @@
 import type * as Attribute from '../../schema/attribute';
 import type { SystemAttributes, WithSystemAttributes } from '../schema';
-
-type Equal<T, U> =
-  (<V>() => V extends T ? 1 : 2) extends <V>() => V extends U ? 1 : 2 ? true : false;
-type Expect<T extends true> = T;
+import type { Equal, Expect } from '../../../tests/helpers/assert';
 
 type Title = Attribute.String & Attribute.Required;
 

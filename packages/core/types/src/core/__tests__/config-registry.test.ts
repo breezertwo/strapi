@@ -1,6 +1,7 @@
 import type * as Core from '..';
 import type { Plugin } from '../plugin';
 import type { ConfigProvider, Strapi as StrapiInstance } from '../strapi';
+import type { Equal, Expect } from '../../../tests/helpers/assert';
 
 type LabConfig = {
   enabled: boolean;
@@ -119,9 +120,6 @@ const pluginNullableDefault = strapi.plugin('config-lab-nested').config('nullabl
 const nullDefault = strapi.config.get('plugin::config-lab-nested.nullable', null);
 const pluginNullDefault = strapi.plugin('config-lab-nested').config('nullable', null);
 // Defaults remove only undefined; they do not narrow a registered number to a literal or erase null.
-type Equal<T, U> =
-  (<V>() => V extends T ? 1 : 2) extends <V>() => V extends U ? 1 : 2 ? true : false;
-type Expect<T extends true> = T;
 declare const defaultChecks: [
   Expect<Equal<typeof optionalPortWithDefault, number>>,
   Expect<Equal<typeof pluginOptionalPortWithDefault, number>>,

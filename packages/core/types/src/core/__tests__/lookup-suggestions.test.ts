@@ -5,6 +5,7 @@ import type { Module } from '../module';
 import type { PolicyReference } from '../policy';
 import type { ServiceLookupName } from '../service';
 import type { ConfigPathSuggestion, Strapi as StrapiInstance } from '../strapi';
+import type { Equal, Expect } from '../../../tests/helpers/assert';
 
 // Completion candidates are checked as types: editors list the literal members of these types.
 
@@ -39,9 +40,6 @@ declare global {
   }
 }
 
-type Equal<T, U> =
-  (<V>() => V extends T ? 1 : 2) extends <V>() => V extends U ? 1 : 2 ? true : false;
-type Expect<T extends true> = T;
 type Includes<TUnion, TMember> = TMember extends TUnion ? true : false;
 
 type LabConfig = Strapi.Registries.PackageConfigs['plugin::suggest-lab'];
