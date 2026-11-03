@@ -245,6 +245,50 @@ admin action provider computes from the `uid` and `pluginName` of a registered a
 (`computeActionId`): `api::<uid>` without a plugin name, `admin::<uid>` for `'admin'`, and
 `plugin::<pluginName>.<uid>` otherwise. Values are not read: declare each ID as `true`.
 
+Actions are registered at boot, by phase:
+
+- Admin and the bundled packages register theirs in `bootstrap`. Content releases registers in
+  `register`.
+- An application registers in the `register` or `bootstrap` of `src/index.ts`. The `bootstrap`
+  phase is allowed since [#28327](https://github.com/strapi/strapi/pull/28327).
+- A plugin registers in its own `register` or `bootstrap`, usually `bootstrap`.
+
+Type generation never runs `bootstrap`: `strapi ts:generate-types` runs `register` only, and no
+generator writes permission action IDs. Every ID is typed by a declaration from the package, plugin
+or application that registers it, never generated.
+
+An application declares its IDs, and those of its local plugins, in one line from the `as const`
+list it passes to `registerMany`. `Core.PermissionActionsOf` computes one `true` entry per ID, so
+the declaration cannot drift from the registration:
+
+```ts
+// src/index.ts
+import type { Core } from '@strapi/strapi';
+
+export const actions = [
+  { section: 'plugins', displayName: 'Export reports', uid: 'report.export' },
+  { section: 'plugins', displayName: 'Read items', uid: 'items.read', pluginName: 'my-plugin' },
+] as const;
+
+declare global {
+  namespace Strapi.Registries {
+    // An interface merges into the registry: a type alias cannot.
+    // eslint-disable-next-line @typescript-eslint/no-empty-interface
+    interface PermissionActions extends Core.PermissionActionsOf<typeof actions> {}
+  }
+}
+```
+
+- The list must be `as const`. Without it, each `uid` is a `string`, and the declaration opens the
+  whole `api::` namespace: every `api::*` ID is accepted.
+- The declaration must be an `interface` to merge into the registry. The repository ESLint config
+  flags an empty interface (`@typescript-eslint/no-empty-interface`), hence the disable comment.
+- The application program excludes `src/plugins/**`, so the application declares the IDs of its
+  local plugins that its typed configs name, as above with `pluginName`.
+- A plugin author declares the same way from the plugin's own list, in its server source.
+
+A package in the monorepo lists its IDs explicitly, next to its other registry declarations:
+
 ```ts
 // packages/core/content-type-builder/server/src/types/index.ts
 declare global {
@@ -293,7 +337,10 @@ declare global {
   `plugin::content-manager.hasPermissions` take `Core.PermissionActionReference`. With strict
   types, once any ID is declared, they accept declared IDs only, and a typo fails with TS2820
   "Did you mean". Without any declared ID they accept any string, unlike policies, where an empty
-  inventory accepts no name.
+  inventory accepts no name. An application always loads admin's declared IDs, so in a strict
+  application the inventory is always closed: an ID that no package, plugin or application declares
+  fails to compile. The application `tsconfig.json` sets `noEmitOnError`, so it also fails
+  `strapi build`.
 - A package program sees the IDs of the packages it loads (`registries.ts`), as for the other
   registries. Applications load every bundled package.
 - Name action IDs in route configs as literals. A constant read from an object without `as const`
