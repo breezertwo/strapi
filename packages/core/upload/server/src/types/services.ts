@@ -3,7 +3,6 @@ import type { Config, File, FileInfo, Folder, UploadableFile, UploadInputFile } 
 import type imageManipulation from '../services/image-manipulation';
 import type apiUploadFolder from '../services/api-upload-folder';
 import type provider from '../services/provider';
-import type folder from '../services/folder';
 import type file from '../services/file';
 import type weeklyMetrics from '../services/weekly-metrics';
 import type extensions from '../services/extensions';
@@ -217,8 +216,6 @@ export type AIMetadataJobsService = Omit<
   getLatestActiveJob(): Promise<AIMetadataJobRow | null>;
 };
 
-type FolderServiceImplementation = typeof folder;
-
 /** A folder of the media library tree. Children are sorted by name. */
 export type FolderStructureNode = {
   id: number;
@@ -226,21 +223,33 @@ export type FolderStructureNode = {
   children: FolderStructureNode[];
 };
 
+/** The options of a folder write made for an admin user. */
+export type FolderWriteOptions = {
+  /** The admin user the write is made for; it becomes the folder's `createdBy` or `updatedBy`. */
+  user: { id: string | number };
+};
+
+/** The options of `deleteByIds`. */
+export type FolderDeleteOptions = {
+  /** Called with every file the deletion removes, before anything is deleted. */
+  validateFiles?: (files: File[]) => Promise<void>;
+};
+
 /** The registered `folder` service: creates, moves and deletes media library folders. */
-export type FolderService = Omit<
-  FolderServiceImplementation,
-  'create' | 'update' | 'deleteByIds' | 'setPathIdAndPath' | 'getStructure'
-> & {
+export type FolderService = {
+  /**
+   * Whether a folder matches these `where` parameters.
+   *
+   * @internal
+   */
+  exists(params?: NonNullable<unknown>): Promise<boolean>;
   /**
    * Creates a folder under `parent`, or at the root without one. The creator fields are set when a
    * user is passed.
    *
    * @internal
    */
-  create(
-    folderData: Parameters<FolderServiceImplementation['create']>[0],
-    opts?: Parameters<FolderServiceImplementation['create']>[1]
-  ): Promise<Folder>;
+  create(folderData: Pick<Folder, 'name' | 'parent'>, opts?: FolderWriteOptions): Promise<Folder>;
   /**
    * Renames or moves a folder. Moving it rewrites the paths of its descendant folders and files.
    * Resolves to `undefined` when a rename finds no folder with this ID.
@@ -257,7 +266,7 @@ export type FolderService = Omit<
        */
       parent?: number | null;
     },
-    opts: Parameters<FolderServiceImplementation['update']>[2]
+    opts: FolderWriteOptions
   ): Promise<Folder | undefined>;
   /**
    * Deletes the folders, their subfolders and every file they hold.
@@ -267,8 +276,8 @@ export type FolderService = Omit<
    * @internal
    */
   deleteByIds(
-    ids?: Parameters<FolderServiceImplementation['deleteByIds']>[0],
-    opts?: Parameters<FolderServiceImplementation['deleteByIds']>[1]
+    ids?: number[],
+    opts?: FolderDeleteOptions
   ): Promise<{ folders: Folder[]; totalFolderNumber: number; totalFileNumber: number }>;
   /**
    * Sets the next `pathId` and the matching `path` on the folder, which is changed in place and
