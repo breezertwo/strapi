@@ -225,9 +225,7 @@ declare const ctx: Context;
 const requestInfo = strapi
   .controller('plugin::content-manager.relations')
   .extractAndValidateRequestInfo(ctx, 'document');
-requestInfo satisfies Promise<{ mainField: string; fieldsToSelect: string[] } | undefined>;
-// @ts-expect-error The info is `undefined` once the 403 response is set.
-requestInfo satisfies Promise<{ mainField: string }>;
+requestInfo satisfies Promise<{ mainField: string; fieldsToSelect: string[] }>;
 // History services only exist with the `cms-content-history` feature.
 // @ts-expect-error The service may be undefined.
 strapi.plugin('content-manager').service('history').findVersionsPage satisfies unknown;

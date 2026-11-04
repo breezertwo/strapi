@@ -47,13 +47,28 @@ export type RelationsController = {
   findExisting: Core.ControllerHandler;
   /**
    * Reads and checks the route params and query shared by `findAvailable` and `findExisting`.
-   * Resolves `undefined` once it has set a 403 response.
+   * Throws a `ForbiddenError` when the user cannot read the relational field.
    * @internal
    */
   extractAndValidateRequestInfo(
-    ctx: Context,
+    ctx: RelationRequestContext,
     id?: Data.ID
-  ): Promise<RelationRequestInfo | undefined>;
+  ): Promise<RelationRequestInfo>;
+};
+
+/**
+ * The query of a relation route request, once `findAvailable` or `findExisting` validated it
+ * (`controllers/validation/relations.ts`). A bare `?locale` or `?status` reads as `null`.
+ */
+type RelationRequestQuery = {
+  locale?: string | null;
+  status?: 'published' | 'draft' | null;
+  [key: string]: unknown;
+};
+
+/** A Koa context whose request query is the validated {@link RelationRequestQuery}. */
+type RelationRequestContext = Omit<Context, 'request'> & {
+  request: Omit<Context['request'], 'query'> & { query: RelationRequestQuery };
 };
 
 /** The relational field of a relation route request, with its source and target models. */

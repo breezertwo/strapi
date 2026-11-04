@@ -7,6 +7,7 @@ import { getService } from '../utils';
 import { validateFindAvailable, validateFindExisting } from './validation/relations';
 import { isListable } from '../services/utils/configuration/attributes';
 import { indexByDocumentId } from './utils/document-status';
+import type { RelationsController } from '../types/controllers';
 
 const { PUBLISHED_AT_ATTRIBUTE, UPDATED_AT_ATTRIBUTE } = contentTypes.constants;
 
@@ -112,7 +113,11 @@ const getPublishedAtClause = (status: string | undefined, uid: UID.Schema) => {
   return status === 'published' ? { $notNull: true } : { $null: true };
 };
 
-const validateLocale = (sourceUid: UID.Schema, targetUid: UID.ContentType, locale?: string) => {
+const validateLocale = (
+  sourceUid: UID.Schema,
+  targetUid: UID.ContentType,
+  locale?: Core.IsStrict extends true ? string | null : string
+) => {
   const sourceModel = strapi.getModel(sourceUid);
   const targetModel = strapi.getModel(targetUid);
 
@@ -129,7 +134,9 @@ const validateLocale = (sourceUid: UID.Schema, targetUid: UID.ContentType, local
 
 const validateStatus = (
   sourceUid: UID.Schema,
-  status?: Modules.Documents.Params.PublicationStatus.Kind
+  status?: Core.IsStrict extends true
+    ? Modules.Documents.Params.PublicationStatus.Kind | null
+    : Modules.Documents.Params.PublicationStatus.Kind
 ): {
   status: Core.IsStrict extends true
     ? Modules.Documents.Params.PublicationStatus.Kind | undefined
@@ -155,7 +162,7 @@ const validateStatus = (
 };
 
 export default {
-  async extractAndValidateRequestInfo(ctx: any, id?: Data.ID) {
+  async extractAndValidateRequestInfo(ctx, id?: Data.ID) {
     const { userAbility } = ctx.state;
     const { model, targetField } = ctx.params;
 
@@ -566,4 +573,4 @@ export default {
       results: await addStatusToRelations(targetUid, relationsUnion),
     };
   },
-};
+} satisfies Core.Implements<RelationsController>;
