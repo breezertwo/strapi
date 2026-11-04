@@ -421,9 +421,12 @@ export type ComponentsService = {
   /**
    * Formats a loaded component for the Content-Type Builder admin.
    *
+   * `connection` is a legacy key: no v5 component schema declares it, and the registry holds it
+   * only when the component's schema file sets one. It is passed through as is.
+   *
    * @internal
    */
-  formatComponent(component: Struct.ComponentSchema): FormattedComponent;
+  formatComponent(component: Struct.ComponentSchema & { connection?: string }): FormattedComponent;
   /**
    * Creates a component with the components sent with it, writes the schema files and emits
    * `component.create`. Rejects with an `ApplicationError` when the component already exists.

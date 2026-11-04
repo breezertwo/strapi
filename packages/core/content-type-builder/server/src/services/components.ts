@@ -1,4 +1,4 @@
-import type { Internal, Struct } from '@strapi/types';
+import type { Core, Internal, Struct } from '@strapi/types';
 import { get, has } from 'lodash';
 
 import { formatAttributes, replaceTemporaryUIDs } from '../utils/attributes';
@@ -6,11 +6,12 @@ import { emitSchemaEvent } from '../utils/events';
 import createBuilder from './schema-builder';
 import type { SchemaHandler } from './schema-builder/schema-handler';
 import type { ComponentHandler } from '../types';
+import type { ComponentsService } from '../types/services';
 
 /**
  * Formats a component attributes
  */
-export const formatComponent = (component: any) => {
+export const formatComponent = ((component) => {
   const { uid, modelName, connection, collectionName, info, category } = component;
 
   return {
@@ -27,7 +28,7 @@ export const formatComponent = (component: any) => {
       attributes: formatAttributes(component),
     },
   };
-};
+}) satisfies Core.Implements<ComponentsService['formatComponent']>;
 
 /**
  * Creates a component and handle the nested components sent with it
@@ -96,7 +97,7 @@ export const editComponent = async (
   return updatedComponent;
 };
 
-export const deleteComponent = async (uid: Internal.UID.Component) => {
+export const deleteComponent = (async (uid: Internal.UID.Component) => {
   const builder = createBuilder();
 
   const deletedComponent = builder.deleteComponent(uid);
@@ -106,4 +107,4 @@ export const deleteComponent = async (uid: Internal.UID.Component) => {
   await emitSchemaEvent('component.delete', { component: deletedComponent });
 
   return deletedComponent;
-};
+}) satisfies Core.Implements<ComponentsService['deleteComponent']>;
