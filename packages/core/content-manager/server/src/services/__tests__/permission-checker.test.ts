@@ -155,6 +155,7 @@ describe('permission-checker action shortcuts', () => {
     const userAbility = {
       can: jest.fn<boolean, [action: string, subject?: unknown, field?: string]>(() => false),
       cannot: jest.fn<boolean, [action: string, subject?: unknown, field?: string]>(() => true),
+      rulesFor: jest.fn<unknown[], [action: string, subject: string]>(() => []),
     };
     const permissionChecker = createService(strapi).create({
       userAbility: userAbility as unknown as Ability,
@@ -201,6 +202,75 @@ describe('permission-checker action shortcuts', () => {
     userAbility.cannot.mockImplementation((action: string) => action !== 'alias::delete');
 
     expect(permissionChecker.cannot.delete()).toBe(false);
+  });
+
+  const shortcuts = [
+    ['read', 'plugin::content-manager.explorer.read'],
+    ['create', 'plugin::content-manager.explorer.create'],
+    ['update', 'plugin::content-manager.explorer.update'],
+    ['delete', 'plugin::content-manager.explorer.delete'],
+    ['publish', 'plugin::content-manager.explorer.publish'],
+    ['unpublish', 'plugin::content-manager.explorer.publish'],
+    ['discard', 'plugin::content-manager.explorer.update'],
+  ] as const;
+
+  test.each(shortcuts)('can.%s checks %s', (name, action) => {
+    const { permissionChecker, userAbility } = setup();
+
+    permissionChecker.can[name](undefined, 'title');
+
+    expect(userAbility.can).toHaveBeenCalledTimes(1);
+    expect(userAbility.can).toHaveBeenCalledWith(action, model, 'title');
+  });
+
+  test.each(shortcuts)('cannot.%s checks %s', (name, action) => {
+    const { permissionChecker, userAbility } = setup();
+
+    permissionChecker.cannot[name](undefined, 'title');
+
+    expect(userAbility.cannot).toHaveBeenCalledTimes(1);
+    expect(userAbility.cannot).toHaveBeenCalledWith(action, model, 'title');
+  });
+
+  test.each(shortcuts)('requiresEntity.%s reads the rules of %s', (name, action) => {
+    const { permissionChecker, userAbility } = setup();
+
+    expect(permissionChecker.requiresEntity[name]()).toBe(false);
+    expect(userAbility.rulesFor).toHaveBeenCalledTimes(1);
+    expect(userAbility.rulesFor).toHaveBeenCalledWith(action, model);
+  });
+
+  // Controllers pass `null` (relations) and partial objects such as `{ locale }`, not only
+  // documents: the contract keeps `entity?: unknown`.
+  test('can.read and cannot.read check the model when the entity is null', () => {
+    const { permissionChecker, userAbility } = setup();
+
+    permissionChecker.can.read(null, 'title');
+    permissionChecker.cannot.read(null, 'title');
+
+    expect(userAbility.can).toHaveBeenCalledWith(
+      'plugin::content-manager.explorer.read',
+      model,
+      'title'
+    );
+    expect(userAbility.cannot).toHaveBeenCalledWith(
+      'plugin::content-manager.explorer.read',
+      model,
+      'title'
+    );
+  });
+
+  test('cannot.create checks a partial entity as a subject', () => {
+    const { permissionChecker, permissionsManager, userAbility } = setup();
+
+    permissionChecker.cannot.create({ locale: 'fr' });
+
+    expect(permissionsManager.toSubject).toHaveBeenCalledWith({ locale: 'fr' }, model);
+    expect(userAbility.cannot).toHaveBeenCalledWith(
+      'plugin::content-manager.explorer.create',
+      `${model}#entity`,
+      undefined
+    );
   });
 
   test('sanitizedQuery.<action> sanitizes the query, then adds the permissions query', async () => {

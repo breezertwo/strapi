@@ -3,7 +3,7 @@ import { async } from '@strapi/utils';
 import { isEmpty } from 'lodash';
 
 import type { Core, UID, Modules } from '@strapi/types';
-import type { PermissionCheckerAction } from '../types/services';
+import type { PermissionChecker, PermissionCheckerAction } from '../types/services';
 
 export const ACTIONS = {
   read: 'plugin::content-manager.explorer.read',
@@ -22,6 +22,8 @@ const ACTION_NAMES = Object.keys(ACTIONS) as ActionName[];
 type SanitizedQueryOptions = { action?: string } | string;
 
 type Entity = Modules.EntityService.Result<UID.ContentType>;
+/** The entity the contract accepts with strict types: callers also pass `null` and partial objects. */
+type CheckedEntity = Core.IsStrict extends true ? unknown : Entity;
 type Query = {
   page?: string;
   pageSize?: string;
@@ -37,7 +39,7 @@ const createPermissionChecker =
 
     const { actionProvider } = strapi.service('admin::permission');
 
-    const toSubject = (entity?: Entity) => {
+    const toSubject = (entity?: CheckedEntity) => {
       return entity ? permissionsManager.toSubject(entity, model) : model;
     };
 
@@ -106,12 +108,12 @@ const createPermissionChecker =
       return permissionsManager.validateQuery(query, { subject: model, action });
     };
 
-    const validateInput = (action: string, data: any, entity?: Entity) => {
+    const validateInput = ((action: string, data, entity?: CheckedEntity) => {
       return permissionsManager.validateInput(data, {
         subject: entity ? toSubject(entity) : model,
         action,
       });
-    };
+    }) satisfies Core.Implements<PermissionChecker['validateInput']>;
 
     const sanitizeCreateInput = (data: any) => sanitizeInput(ACTIONS.create, data);
     const sanitizeUpdateInput = (entity: Entity) => (data: any) =>
