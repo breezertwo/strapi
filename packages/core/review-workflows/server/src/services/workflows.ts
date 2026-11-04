@@ -9,6 +9,7 @@ import {
   toWorkflowSnapshot,
 } from '../audit-logs';
 import type { Stage } from '../../../shared/contracts/review-workflows';
+import type { WorkflowsService } from '../types/services';
 import { getService } from '../utils';
 import { getWorkflowContentTypeFilter } from '../utils/review-workflows';
 import workflowsContentTypesFactory, { type ContentTypeTransfer } from './workflow-content-types';
@@ -44,7 +45,7 @@ const processPopulate = (populate: any) => {
   return populate;
 };
 
-export default ({ strapi }: { strapi: Core.Strapi }) => {
+export default (({ strapi }: { strapi: Core.Strapi }) => {
   const workflowsContentTypes = workflowsContentTypesFactory({ strapi });
   const workflowValidator = getService('validation', { strapi });
   const metrics = getService('workflow-metrics', { strapi });
@@ -96,7 +97,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
      * @param {object} opts.filters - Filters object.
      * @returns {Promise<object[]>} - List of workflows that match the user's filters.
      */
-    async find(opts: any = {}) {
+    async find(opts = {}) {
       const filters = processFilters({ strapi }, opts.filters);
       const populate = processPopulate(opts.populate);
 
@@ -115,7 +116,12 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
      * @param {object} opts - Options for the query.
      * @returns {Promise<object>} - Workflow object matching the requested ID.
      */
-    findById(id: any, opts: { populate?: any } = {}) {
+    findById(
+      id,
+      opts: Core.IsStrict extends true
+        ? NonNullable<Parameters<WorkflowsService['findById']>[1]>
+        : { populate?: any } = {}
+    ) {
       const populate = processPopulate(opts.populate);
 
       const query = strapi.get('query-params').transform(WORKFLOW_MODEL_UID, { populate });
@@ -372,7 +378,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
      * @param {object} opts - Options for the query.
      * @returns {Promise<object|null>} - Assigned workflow object if found, or null.
      */
-    async getAssignedWorkflow(uid: any, opts: any = {}) {
+    async getAssignedWorkflow(uid, opts = {}) {
       const workflows = await this._getAssignedWorkflows(uid, opts);
 
       return workflows.length > 0 ? workflows[0] : null;
@@ -386,7 +392,8 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
      * @param {object} opts - Options for the query.
      * @returns {Promise<object[]>} - List of assigned workflow objects.
      */
-    async _getAssignedWorkflows(uid: any, opts = {}) {
+    // eslint-disable-next-line @typescript-eslint/ban-types -- the type the default gave before the tie
+    async _getAssignedWorkflows(uid, opts: {} = {}) {
       return this.find({
         ...opts,
         filters: { contentTypes: getWorkflowContentTypeFilter({ strapi }, uid) },
@@ -399,7 +406,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
      * @returns {Promise<object>} - Workflow object associated with the content type ID.
      * @throws {ApplicationError} - If no assigned workflow is found for the content type ID.
      */
-    async assertContentTypeBelongsToWorkflow(uid: any) {
+    async assertContentTypeBelongsToWorkflow(uid) {
       const workflow = await this.getAssignedWorkflow(uid, {
         populate: 'stages',
       });
@@ -420,7 +427,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
      * @returns
      * @throws {ApplicationError} - If the stage does not belong to the specified workflow.
      */
-    assertStageBelongsToWorkflow(stageId: any, workflow: any) {
+    assertStageBelongsToWorkflow(stageId, workflow) {
       if (!stageId) {
         return;
       }
@@ -431,4 +438,4 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
       }
     },
   };
-};
+}) satisfies Core.ServiceImplementation<'plugin::review-workflows.workflows'>;
