@@ -1,4 +1,4 @@
-import type { Ability } from '@casl/ability';
+import type { Ability, AbilityTuple, MongoQuery, PureAbility } from '@casl/ability';
 import type { Data, Modules, Schema, Struct, UID, Utils } from '@strapi/types';
 import type { ComponentConfiguration } from '../../../shared/contracts/components';
 import type { Configuration } from '../../../shared/contracts/content-types';
@@ -395,11 +395,12 @@ export type DataMapperService = Omit<
 export type PermissionService = {
   /**
    * Whether the ability may configure the views of the content type: the single type or the
-   * collection type configure-view action.
+   * collection type configure-view action. The check passes no subject, which CASL resolves to
+   * any subject type, so the ability also accepts action-only checks.
    * @internal
    */
   canConfigureContentType(options: {
-    userAbility: Ability;
+    userAbility: PureAbility<string | AbilityTuple, MongoQuery>;
     contentType: Struct.ContentTypeSchema;
   }): boolean;
   /**

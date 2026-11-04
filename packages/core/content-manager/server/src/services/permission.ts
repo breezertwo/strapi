@@ -2,15 +2,18 @@ import { contentTypes as contentTypesUtils } from '@strapi/utils';
 
 import type { Core, Struct } from '@strapi/types';
 import { getService } from '../utils';
+import type { PermissionService } from '../types/services';
 
-export default ({ strapi }: { strapi: Core.Strapi }) => ({
+export default (({ strapi }: { strapi: Core.Strapi }) => ({
   canConfigureContentType({
     userAbility,
     contentType,
-  }: {
-    userAbility: any;
-    contentType: Struct.ContentTypeSchema;
-  }) {
+  }: Core.IsStrict extends true
+    ? Parameters<PermissionService['canConfigureContentType']>[0]
+    : {
+        userAbility: any;
+        contentType: Struct.ContentTypeSchema;
+      }) {
     const action = contentTypesUtils.isSingleType(contentType)
       ? 'plugin::content-manager.single-types.configure-view'
       : 'plugin::content-manager.collection-types.configure-view';
@@ -105,4 +108,4 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
     >;
     await strapi.service('admin::permission').actionProvider.registerMany(actions);
   },
-});
+})) satisfies Core.ServiceImplementation<'plugin::content-manager.permission'>;
