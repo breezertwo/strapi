@@ -174,6 +174,8 @@ export type ContentTypeInput = {
   pluginOptions?: Struct.SchemaPluginOptions;
   collectionName?: string;
   attributes: Record<string, AttributeInput>;
+  /** The plugin the content type belongs to. A new content type that names one gets no API folder. */
+  plugin?: string;
 };
 
 /** A component in a Content-Type Builder payload: the `info` fields sit at the top level. */

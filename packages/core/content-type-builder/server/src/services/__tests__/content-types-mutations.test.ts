@@ -149,6 +149,16 @@ describe('content type mutation compensation', () => {
     } as any;
   });
 
+  it('skips API generation when the created content type names a plugin', async () => {
+    await createContentType({
+      ...createInput,
+      contentType: { ...createInput.contentType, plugin: 'example' },
+    });
+
+    expect(jest.requireMock('@strapi/generators').generate).not.toHaveBeenCalled();
+    expect(builder.writeFiles).toHaveBeenCalledTimes(1);
+  });
+
   it('removes a generated API skeleton when standalone schema creation fails', async () => {
     files.schemas.delete(contentType.uid);
     files.apis.clear();
