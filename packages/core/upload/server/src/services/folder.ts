@@ -1,10 +1,12 @@
 import { map, sortBy } from 'lodash';
+import type { Core } from '@strapi/types';
 import { strings, setCreatorFields } from '@strapi/utils';
 import { FOLDER_MODEL_UID, FILE_MODEL_UID } from '../constants';
 import { getService } from '../utils';
 import { AUDITED_EVENTS } from '../audit-logs';
 
 import type { File, Folder } from '../types';
+import type { FolderService } from '../types/services';
 
 type FolderMap = {
   [key: string]: Partial<Folder> & {
@@ -341,4 +343,10 @@ export default {
   update,
   setPathIdAndPath,
   getStructure,
-};
+  // setPathIdAndPath and getStructure are checked by name only until develop types them as the
+  // contract does: setPathIdAndPath returns the folder it is given (generic), and getStructure
+  // resolves to FolderStructureNode[] (D02).
+} satisfies Core.Implements<
+  Omit<FolderService, 'setPathIdAndPath' | 'getStructure'> &
+    Record<'setPathIdAndPath' | 'getStructure', unknown>
+>;
