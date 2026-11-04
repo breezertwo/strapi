@@ -73,7 +73,7 @@ const createInput = {
     displayName: 'Article',
     singularName: 'article',
     pluralName: 'articles',
-    kind: 'collectionType',
+    kind: 'collectionType' as const,
     attributes: {},
   },
   components: [],

@@ -1,33 +1,41 @@
 import _, { get } from 'lodash';
 
 import { contentTypes as contentTypesUtils, errors } from '@strapi/utils';
-import type { UID, Struct } from '@strapi/types';
+import type { Core, UID, Struct } from '@strapi/types';
 import { formatAttributes, replaceTemporaryUIDs } from '../utils/attributes';
 import { emitSchemaEvent } from '../utils/events';
 import { getService } from '../utils';
 import createBuilder from './schema-builder';
 import { finalizeSchemaMutation, rollbackSchemaMutation } from './schema-mutation';
 import { coreUids, pluginsUids } from './constants';
+import type {
+  ContentTypeHandler,
+  ContentTypesService,
+  CreateContentTypePayload,
+} from '../types/services';
 
 const { ApplicationError } = errors;
 
-export const isCTBOwnedApplicationContentType = (uid: UID.ContentType): boolean =>
-  uid.startsWith('api::');
+export const isCTBOwnedApplicationContentType = ((uid: UID.ContentType): boolean =>
+  uid.startsWith('api::')) satisfies Core.Implements<
+  ContentTypesService['isCTBOwnedApplicationContentType']
+>;
 
-export const assertCTBOwnedApplicationContentType = (uid: UID.ContentType): void => {
+export const assertCTBOwnedApplicationContentType = ((uid: UID.ContentType): void => {
   if (!isCTBOwnedApplicationContentType(uid)) {
     throw new ApplicationError(`Content type "${uid}" is not managed by CTB and cannot be deleted`);
   }
-};
+}) satisfies Core.Implements<ContentTypesService['assertCTBOwnedApplicationContentType']>;
 
 const pruneFolderReferences = (uids: UID.ContentType[]) => {
   return getService('content-structure').commitFromUpdate({ deletedUids: new Set(uids) });
 };
 
-export const isContentTypeVisible = (model: Struct.ContentTypeSchema) =>
-  get(model, 'pluginOptions.content-type-builder.visible', true) === true;
+export const isContentTypeVisible = ((model: Struct.ContentTypeSchema) =>
+  get(model, 'pluginOptions.content-type-builder.visible', true) ===
+  true) satisfies Core.Implements<ContentTypesService['isContentTypeVisible']>;
 
-export const getRestrictRelationsTo = (contentType: Struct.ContentTypeSchema) => {
+export const getRestrictRelationsTo = ((contentType: Struct.ContentTypeSchema) => {
   const { uid } = contentType;
   if (uid === coreUids.STRAPI_USER) {
     // TODO: replace with an obj { relation: 'x', bidirectional: true|false }
@@ -43,12 +51,12 @@ export const getRestrictRelationsTo = (contentType: Struct.ContentTypeSchema) =>
   }
 
   return null;
-};
+}) satisfies Core.Implements<ContentTypesService['getRestrictRelationsTo']>;
 
 /**
  * Format a contentType info to be used by the front-end
  */
-export const formatContentType = (contentType: any) => {
+export const formatContentType = ((contentType) => {
   const { uid, kind, modelName, plugin, collectionName, info } = contentType;
 
   return {
@@ -69,11 +77,13 @@ export const formatContentType = (contentType: any) => {
       restrictRelationsTo: getRestrictRelationsTo(contentType),
     },
   };
-};
+}) satisfies Core.Implements<ContentTypesService['formatContentType']>;
 
-export const createContentTypes = async (contentTypes: any[]) => {
+export const createContentTypes = (async (
+  contentTypes: Core.IsStrict extends true ? CreateContentTypePayload[] : any[]
+) => {
   const builder = createBuilder();
-  const createdContentTypes: any[] = [];
+  const createdContentTypes: Core.IsStrict extends true ? ContentTypeHandler[] : any[] = [];
   const generatedApiNames: string[] = [];
   let schemaAlreadyRolledBack = false;
 
@@ -112,7 +122,7 @@ export const createContentTypes = async (contentTypes: any[]) => {
   }
 
   return createdContentTypes;
-};
+}) satisfies Core.Implements<ContentTypesService['createContentTypes']>;
 
 type CreateContentTypeOptions = {
   defaultBuilder?: any; // TODO
@@ -123,7 +133,7 @@ type CreateContentTypeOptions = {
 /**
  * Creates a content type and handle the nested components sent with it
  */
-export const createContentType = async (
+export const createContentType = (async (
   { contentType, components }: any,
   options: CreateContentTypeOptions = {}
 ) => {
@@ -200,7 +210,7 @@ export const createContentType = async (
   }
 
   return newContentType;
-};
+}) satisfies Core.Implements<ContentTypesService['createContentType']>;
 
 /**
  * Generate an API skeleton
