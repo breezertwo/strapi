@@ -6,7 +6,6 @@ import type provider from '../services/provider';
 import type folder from '../services/folder';
 import type file from '../services/file';
 import type weeklyMetrics from '../services/weekly-metrics';
-import type metrics from '../services/metrics';
 import type extensions from '../services/extensions';
 import type { createAIMetadataService } from '../services/ai-metadata';
 import type { createAIMetadataJobsService } from '../services/ai-metadata-jobs';
@@ -162,10 +161,8 @@ export type UploadService = {
   _queueConcurrentOperation<T>(queue: Promise<T>[], operation: Promise<T>): void;
 };
 
-type MetricsServiceImplementation = ReturnType<typeof metrics>;
-
 /** The registered `metrics` service: sends the upload telemetry events. */
-export type MetricsService = Omit<MetricsServiceImplementation, 'trackUsage'> & {
+export type MetricsService = {
   /**
    * Sends a telemetry event. `properties.eventProperties` also gets whether AI metadata is enabled,
    * when an AI provider is available. Resolves to `false` when the event is rate limited or the
@@ -175,8 +172,17 @@ export type MetricsService = Omit<MetricsServiceImplementation, 'trackUsage'> & 
    */
   trackUsage(
     event: string,
-    properties?: Record<string, unknown>
-  ): ReturnType<MetricsServiceImplementation['trackUsage']>;
+    properties?: {
+      eventProperties?: Record<string, unknown>;
+      groupProperties?: Record<string, unknown>;
+    } & Record<string, unknown>
+  ): Promise<boolean>;
+  /**
+   * Sends the `didInitializePluginUpload` telemetry event with the provider name and privacy.
+   *
+   * @internal
+   */
+  sendUploadPluginMetrics(): Promise<void>;
 };
 
 type AIMetadataJobsServiceImplementation = ReturnType<typeof createAIMetadataJobsService>;
