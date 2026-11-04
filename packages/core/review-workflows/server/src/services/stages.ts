@@ -15,7 +15,7 @@ const { ApplicationError, ValidationError } = errors;
 const sanitizedStageFields = ['id', 'name', 'workflow', 'color'];
 const sanitizeStageFields = (stage: Record<string, unknown>) => pick(stage, sanitizedStageFields);
 
-export default ({ strapi }: { strapi: Core.Strapi }) => {
+export default (({ strapi }: { strapi: Core.Strapi }) => {
   const metrics = getService('workflow-metrics', { strapi });
   const stagePermissionsService = getService('stage-permissions', { strapi });
   const workflowValidator = getService('validation', { strapi });
@@ -34,14 +34,14 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
   };
 
   return {
-    find({ workflowId, populate }: any) {
+    find({ workflowId, populate }) {
       return strapi.db.query(STAGE_MODEL_UID).findMany({
         where: { workflow: workflowId },
         populate,
       });
     },
 
-    findById(id: string | number, { workflowId, populate }: any = {}) {
+    findById(id: string | number, { workflowId, populate } = {}) {
       return strapi.db.query(STAGE_MODEL_UID).findOne({
         where: workflowId === undefined ? { id } : { id, workflow: workflowId },
         populate,
@@ -176,7 +176,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
       return stage;
     },
 
-    async delete(stage: any) {
+    async delete(stage) {
       // Unregister all permissions related to this stage id
       await this.deleteStagePermissions([stage]);
 
@@ -189,7 +189,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
       return deletedStage;
     },
 
-    async deleteMany(stages: any) {
+    async deleteMany(stages) {
       await this.deleteStagePermissions(stages);
 
       return strapi.db.query(STAGE_MODEL_UID).deleteMany({
@@ -197,12 +197,14 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
       });
     },
 
-    async deleteStagePermissions(stages: any) {
-      const permissions = stages.flatMap((s: any) => s.permissions || []);
+    async deleteStagePermissions(stages) {
+      const permissions = stages.flatMap(
+        (s: { permissions?: { id: number }[] }) => s.permissions || []
+      );
       await stagePermissionsService.unregister(permissions || []);
     },
 
-    count({ workflowId }: any = {}) {
+    count({ workflowId } = {}) {
       const opts = {} as any;
 
       if (workflowId) {
@@ -214,7 +216,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
       return strapi.db.query(STAGE_MODEL_UID).count(opts);
     },
 
-    async replaceStages(srcStages: any, destStages: any, contentTypesToMigrate = []) {
+    async replaceStages(srcStages: any, destStages: any, contentTypesToMigrate: never[] = []) {
       const { created, updated, deleted } = getDiffBetweenStages(srcStages, destStages);
 
       assertAtLeastOneStageRemain(srcStages || [], { created, deleted });
@@ -390,7 +392,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => {
       );
     },
   };
-};
+}) satisfies Core.ServiceImplementation<'plugin::review-workflows.stages'>;
 
 const normalizeStageForDiff = (stage: {
   name?: string;
