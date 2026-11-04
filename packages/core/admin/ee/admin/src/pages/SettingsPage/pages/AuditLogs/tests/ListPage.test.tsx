@@ -3,7 +3,7 @@ import { render, screen, server, waitFor } from '@tests/utils';
 import { delay, http, HttpResponse } from 'msw';
 import { Link } from 'react-router-dom';
 
-import { ListPage } from '../ListPage';
+import { ListPage, ProtectedListPage } from '../ListPage';
 
 const anchorClick = jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
 
@@ -423,5 +423,53 @@ describe('ADMIN | Pages | AUDIT LOGS | ListPage', () => {
 
     expect(await screen.findByRole('option', { name: 'John Doe' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Kai Doe' })).toBeInTheDocument();
+  });
+
+  describe('ProtectedListPage', () => {
+    const originalStrapi = window.strapi;
+
+    beforeEach(() => {
+      window.strapi = {
+        ...originalStrapi,
+        features: {
+          ...originalStrapi.features,
+          isEnabled: (name?: string) => name === 'audit-logs',
+        },
+      };
+    });
+
+    afterEach(() => {
+      window.strapi = originalStrapi;
+    });
+
+    it('renders the not found page when the config disables audit logs', async () => {
+      server.use(
+        http.get('/admin/license-limit-information', () =>
+          HttpResponse.json({
+            data: { features: [{ name: 'audit-logs' }], auditLogs: { enabled: false } },
+          })
+        )
+      );
+
+      render(<ProtectedListPage />);
+
+      expect(await screen.findByRole('heading', { name: 'Page not found' })).toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: 'Audit Logs' })).not.toBeInTheDocument();
+    });
+
+    it('renders the audit logs when the config keeps them enabled', async () => {
+      server.use(
+        http.get('/admin/license-limit-information', () =>
+          HttpResponse.json({
+            data: { features: [{ name: 'audit-logs' }], auditLogs: { enabled: true } },
+          })
+        )
+      );
+
+      render(<ProtectedListPage />);
+
+      expect(await screen.findByRole('heading', { name: 'Audit Logs' })).toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: 'Page not found' })).not.toBeInTheDocument();
+    });
   });
 });
