@@ -214,6 +214,47 @@ route references. The tag is documentation only: no build
 sets `stripInternal`, so the declarations keep the members and strict callers still see their
 types. Other packages and applications must not rely on them.
 
+### Checking an implementation against its contract
+
+`Core.Implements<Contract>` and `Core.ServiceImplementation<uid>` tie the code to its contract.
+With strict types, they are the contract: unannotated parameters take the contract's types, and
+missing members, parameters and results are errors at the implementation. Without strict types,
+they keep the member names with `any` parameters and results, so the published declarations keep
+the implementation's own types.
+
+Use them after `satisfies` only. An annotation (`const x: Core.Implements<C>`) publishes the type
+itself instead of the implementation's.
+
+| Implementation                         | Write                                                                                                                    |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Service factory returning an object    | `export default (({ strapi }: { strapi: Core.Strapi }) => ({ … })) satisfies Core.ServiceImplementation<'plugin::x.y'>;` |
+| Exported function                      | `export const f = ((a, b) => { … }) satisfies Core.Implements<XService['f']>;`                                           |
+| Object returned with shorthand members | `return { a, b } satisfies Core.Implements<XService>;` checks the members, not their parameters                          |
+| Controller object                      | `export default { … } satisfies Core.Implements<XController>;`                                                           |
+
+`Core.ServiceImplementation` reads `Strapi.Registries.PackageServices`. A `Core.Licensed` entry is
+checked against the contract it wraps.
+
+- Remove a parameter annotation only when it is exactly `any`. Keep every other annotation as
+  written: an unannotated `({ strapi })` would print the inferred import path instead of
+  `Core.Strapi`.
+- Write the type of a defaulted parameter (`count: number = 0`). Without strict types, the
+  contextual `any` replaces the type the initializer gave it.
+- An unannotated parameter is required even when the contract's is optional: write `(a, b?)` to
+  keep it optional.
+- A factory's returned object is not checked for members its contract lacks. An object literal
+  that `satisfies` the contract directly is.
+- A contract that reads its implementation (`Omit<ReturnType<typeof impl>, …>`,
+  `Parameters<Impl['m']>`) cannot check that implementation: the reference is circular (TS7022).
+  Write the contract as a standalone type first.
+- A non-bare `any` (`{ data: any }`, `Record<string, any>`, `any[]`, an explicit `any` result)
+  widens to `any` when dropped. Gate it instead, with the legacy side copied from the line it
+  replaces and the strict side taken from the contract:
+
+  ```ts
+  create(opts: Core.IsStrict extends true ? Parameters<WorkflowsService['create']>[0] : { data: any })
+  ```
+
 ### Controller contracts and typed routes
 
 A package registers every controller it ships in `PackageControllers`. The contracts sit in
