@@ -1,6 +1,5 @@
-import type { queryParams } from '@strapi/utils';
-import type upload from '../services/upload';
-import type { Config, File, Folder, UploadableFile, UploadInputFile } from '../types';
+import type { pagination, queryParams } from '@strapi/utils';
+import type { Config, File, FileInfo, Folder, UploadableFile, UploadInputFile } from '../types';
 import type imageManipulation from '../services/image-manipulation';
 import type apiUploadFolder from '../services/api-upload-folder';
 import type provider from '../services/provider';
@@ -14,10 +13,40 @@ import type { createAIMetadataJobsService } from '../services/ai-metadata-jobs';
 import type { createAIMetadataProviderService } from '../services/ai-metadata-provider';
 import type { AIMetadataJob } from '../../../shared/contracts/ai-metadata-jobs';
 
-type UploadServiceImplementation = ReturnType<typeof upload>;
+/** The options of the upload service's writes. */
+export type UploadOptions = {
+  /** The admin user the write is made for; it becomes the file's `createdBy` or `updatedBy`. */
+  user?: { id: string | number };
+};
 
-/** A page of files: the page result of the implementation, with its files typed. */
-type FilesPage<TPage> = Omit<Awaited<TPage>, 'results'> & { results: File[] };
+/** Where an uploaded file is attached, and the folder it is staged in. */
+export type FileMetas = {
+  refId?: string | number;
+  ref?: string;
+  field?: string;
+  path?: string;
+  tmpWorkingDirectory?: string;
+};
+
+/** The `data` of a file replacement: the new file information and where the file is attached. */
+export type ReplaceData = { fileInfo: FileInfo } & FileMetas;
+
+/** A page of files from `findPage`, with page-based pagination information. */
+export type FilesPage = {
+  results: File[];
+  pagination: { page: number; pageSize: number; pageCount: number; total: number };
+};
+
+/**
+ * A page of files from `findAndCountPage`. Without the count, `pagination` has no `total` or
+ * `pageCount`.
+ */
+export type CountedFilesPage = {
+  results: File[];
+  pagination: Partial<
+    pagination.PagePatinationInformation | pagination.OffsetPaginationInformation
+  >;
+};
 
 /**
  * A query of the upload service's file reads: the REST query params, with the Content API's nested
@@ -47,48 +76,26 @@ export type FilesQuery = queryParams.Params & {
  * add `isUrlSigned`, and carry `folder`, `related`, `createdBy` and `updatedBy` only when
  * populated.
  */
-export type UploadService = Omit<
-  UploadServiceImplementation,
-  | 'upload'
-  | 'replace'
-  | 'updateFileInfo'
-  | 'remove'
-  | 'formatFileInfo'
-  | 'getSettings'
-  | 'setSettings'
-  | 'getConfiguration'
-  | 'setConfiguration'
-  | 'findOne'
-  | 'findMany'
-  | 'findPage'
-  | 'findAndCountPage'
-> & {
+export type UploadService = {
   /** Uploads the files and stores one file row per file, in the order of `files`. */
   upload(
     input: { data: Record<string, unknown>; files: UploadInputFile[] },
-    opts?: Parameters<UploadServiceImplementation['upload']>[1]
+    opts?: UploadOptions
   ): Promise<File[]>;
   /**
    * Replaces the file's content, keeping its hash and extension so its URL does not change.
    * Rejects with a `NotFoundError` when no file has this ID.
    */
   replace(
-    id: Parameters<UploadServiceImplementation['replace']>[0],
-    input: {
-      data: Parameters<UploadServiceImplementation['replace']>[1]['data'];
-      file: UploadInputFile;
-    },
-    opts?: Parameters<UploadServiceImplementation['replace']>[2]
+    id: string | number,
+    input: { data: ReplaceData; file: UploadInputFile },
+    opts?: UploadOptions
   ): Promise<File>;
   /**
    * Updates the file's name, alternative text, caption, focal point or folder. Rejects with a
    * `NotFoundError` when no file has this ID.
    */
-  updateFileInfo(
-    id: Parameters<UploadServiceImplementation['updateFileInfo']>[0],
-    fileInfo: Parameters<UploadServiceImplementation['updateFileInfo']>[1],
-    opts?: Parameters<UploadServiceImplementation['updateFileInfo']>[2]
-  ): Promise<File>;
+  updateFileInfo(id: string | number, fileInfo: FileInfo, opts?: UploadOptions): Promise<File>;
   /**
    * Deletes the file and its formats from the provider when they are stored with the configured
    * provider, then deletes its row.
@@ -99,13 +106,9 @@ export type UploadService = Omit<
   /** A missing name (formidable's nullable `originalFilename`) is rejected as an invalid name. */
   formatFileInfo(
     file: { filename: string | null | undefined; type: string; size: number },
-    ...rest: Parameters<UploadServiceImplementation['formatFileInfo']> extends [
-      unknown,
-      ...infer TRest,
-    ]
-      ? TRest
-      : never
-  ): ReturnType<UploadServiceImplementation['formatFileInfo']>;
+    fileInfo?: Partial<FileInfo>,
+    metas?: FileMetas
+  ): Promise<Omit<UploadableFile, 'getStream'>>;
   /**
    * The stored media library settings, or `null` before they are first stored. Settings saved
    * without `aiMetadata` or `autoOrientation` are stored without them.
@@ -120,10 +123,7 @@ export type UploadService = Omit<
     value: Strapi.Registries.Stores['plugin_upload_view_configuration']
   ): Promise<void>;
   /** The file with this ID, or `null` when there is none. */
-  findOne(
-    id: Parameters<UploadServiceImplementation['findOne']>[0],
-    populate?: queryParams.Params['populate']
-  ): Promise<File | null>;
+  findOne(id: string | number, populate?: queryParams.Params['populate']): Promise<File | null>;
   /**
    * The matching files. `pagination` is ignored: pass flat `start` and `limit` to page. With
    * `fields`, a file has only the selected fields, its `id` and its `documentId`.
@@ -133,17 +133,33 @@ export type UploadService = Omit<
    * A page of the matching files, from flat `page` and `pageSize`. With `fields`, a file has only
    * the selected fields, its `id` and its `documentId`.
    */
-  findPage(
-    query?: queryParams.Params
-  ): Promise<FilesPage<ReturnType<UploadServiceImplementation['findPage']>>>;
+  findPage(query?: queryParams.Params): Promise<FilesPage>;
   /**
    * A page of the matching files, from the nested `pagination` and the `api.rest` limits. Without
    * the count, `pagination` has no `total` or `pageCount`. With `fields`, a file has only the
    * selected fields, its `id` and its `documentId`.
    */
-  findAndCountPage(
-    query?: FilesQuery
-  ): Promise<FilesPage<ReturnType<UploadServiceImplementation['findAndCountPage']>>>;
+  findAndCountPage(query?: FilesQuery): Promise<CountedFilesPage>;
+  /**
+   * Uploads the image with its dimensions and generated formats. Exposed for testing only.
+   *
+   * @internal
+   */
+  _uploadImage(fileData: UploadableFile): Promise<void>;
+  /**
+   * Replaces the stored image and its formats with this image and its generated formats. Exposed
+   * for testing only.
+   *
+   * @internal
+   */
+  _replaceImage(fileData: UploadableFile, oldFile: File): Promise<void>;
+  /**
+   * Queues a provider operation, with its rejection handled in the same turn. Exposed for testing
+   * only.
+   *
+   * @internal
+   */
+  _queueConcurrentOperation<T>(queue: Promise<T>[], operation: Promise<T>): void;
 };
 
 type MetricsServiceImplementation = ReturnType<typeof metrics>;
